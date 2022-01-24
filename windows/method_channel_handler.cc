@@ -16,25 +16,30 @@ constexpr auto kErrorCodeInvalidArguments = "invalid_args";
 constexpr auto kErrorCodeInvalidId = "invalid_id";
 }  // namespace
 
-MethodChannelHandler::MethodChannelHandler(ObjectRegistry *object_registry)
-    : registry_(object_registry), task_queue_(std::make_unique<TaskQueue>()) {}
+MethodChannelHandler::MethodChannelHandler(
+    ObjectRegistry *object_registry, flutter::BinaryMessenger *binary_messenger)
+    : registry_(object_registry),
+      binary_messenger_(binary_messenger),
+      task_queue_(std::make_unique<TaskQueue>()) {}
 
 void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue> &method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (method_call.method_name().compare(kMethodCreateEnvironment) == 0) {
+  const auto &method_name = method_call.method_name();
+
+  if (method_name.compare(kMethodCreateEnvironment) == 0) {
     return CreateEnvironment(method_call, std::move(result));
   }
 
-  if (method_call.method_name().compare(kMethodDisposeEnvironment) == 0) {
+  if (method_name.compare(kMethodDisposeEnvironment) == 0) {
     return DisposeEnvironment(method_call, std::move(result));
   }
 
-  if (method_call.method_name().compare(kMethodCreatePlayer) == 0) {
+  if (method_name.compare(kMethodCreatePlayer) == 0) {
     return CreatePlayer(method_call, std::move(result));
   }
 
-  if (method_call.method_name().compare(kMethodDisposePlayer) == 0) {
+  if (method_name.compare(kMethodDisposePlayer) == 0) {
     return DisposePlayer(method_call, std::move(result));
   }
 
@@ -104,10 +109,10 @@ void MethodChannelHandler::CreatePlayer(
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
 
-  task_queue_->Enqueue([environment_id, shared_result, registry = registry_]() {
+  task_queue_->Enqueue([environment_id, shared_result, this]() {
     std::shared_ptr<foxglove::PlayerEnvironment> env;
     if (environment_id.has_value()) {
-      env = registry->environments()->GetEnvironment(environment_id.value());
+      env = registry_->environments()->GetEnvironment(environment_id.value());
       if (!env) {
         return shared_result->Error(kErrorCodeInvalidId);
       }
@@ -120,8 +125,10 @@ void MethodChannelHandler::CreatePlayer(
     }
 
     auto player = env->CreatePlayer();
+    player->SetEventDelegate(
+        std::make_unique<PlayerBridge>(binary_messenger_, player.get()));
     auto id = player->id();
-    registry->players()->InsertPlayer(player->id(), std::move(player));
+    registry_->players()->InsertPlayer(player->id(), std::move(player));
     shared_result->Success(flutter::EncodableMap(
 
         {{"player_id", id}}));

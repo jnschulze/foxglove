@@ -11,11 +11,18 @@ set(PLUGIN_NAME "foxglove_plugin")
 add_library(${PLUGIN_NAME} SHARED
   "foxglove_plugin.cpp"
   "method_channel_handler.cc"
+  "player_bridge.cc"
 )
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
-  CXX_VISIBILITY_PRESET hidden)
-  
+  CXX_VISIBILITY_PRESET hidden
+  CXX_STANDARD 17
+)
+ 
+target_compile_features(${PLUGIN_NAME} PRIVATE
+  cxx_std_17
+)
+
 target_compile_definitions(${PLUGIN_NAME} PRIVATE
   FLUTTER_PLUGIN_IMPL
 )

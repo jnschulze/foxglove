@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -32,9 +34,16 @@ class _MyAppState extends State<MyApp> {
     //final player = await p.createPlayer(environmentId: envId);
 
     final player = await p.createPlayer();
-    await player?.dispose();
+    //await player?.dispose();
+
+    final m = Media.file(
+        File(r'C:\Users\10261369\Videos\bbb_sunflower_1080p_30fps_normal.mp4'));
 
     //await p.disposeEnvironment(envId);
+
+    await player?.open(m);
+
+    await player?.play();
 
     int x = 5;
   }

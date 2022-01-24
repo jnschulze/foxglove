@@ -19,11 +19,12 @@ class FoxglovePlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
 
-  FoxglovePlugin();
+  FoxglovePlugin(flutter::BinaryMessenger *binary_messenger);
 
   virtual ~FoxglovePlugin();
 
  private:
+  flutter::BinaryMessenger *binary_messenger_;
   std::unique_ptr<foxglove::windows::MethodChannelHandler>
       method_channel_handler_;
 };
@@ -36,7 +37,7 @@ void FoxglovePlugin::RegisterWithRegistrar(
           registrar->messenger(), "foxglove",
           &flutter::StandardMethodCodec::GetInstance());
 
-  auto plugin = std::make_unique<FoxglovePlugin>();
+  auto plugin = std::make_unique<FoxglovePlugin>(registrar->messenger());
 
   channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
@@ -47,10 +48,11 @@ void FoxglovePlugin::RegisterWithRegistrar(
   registrar->AddPlugin(std::move(plugin));
 }
 
-FoxglovePlugin::FoxglovePlugin()
-    : method_channel_handler_(
+FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger *binary_messenger)
+    : binary_messenger_(binary_messenger_),
+      method_channel_handler_(
           std::make_unique<foxglove::windows::MethodChannelHandler>(
-              foxglove::g_registry.get())) {}
+              foxglove::g_registry.get(), binary_messenger)) {}
 
 FoxglovePlugin::~FoxglovePlugin() {}
 

@@ -4,14 +4,17 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
+#include <unordered_map>
+
 #include "base/task_queue.h"
 #include "globals.h"
+#include "player_bridge.h"
 
 namespace foxglove {
 namespace windows {
 class MethodChannelHandler {
  public:
-  MethodChannelHandler(ObjectRegistry *object_registry);
+  MethodChannelHandler(ObjectRegistry *object_registry, flutter::BinaryMessenger* binary_messenger);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
@@ -32,6 +35,8 @@ class MethodChannelHandler {
 
  private:
   ObjectRegistry *registry_;
+  flutter::BinaryMessenger* binary_messenger_;
+  //std::unordered_map<int64_t, std::unique_ptr<PlayerBridge>> players_;
   std::unique_ptr<TaskQueue> task_queue_;
 };
 }  // namespace windows
