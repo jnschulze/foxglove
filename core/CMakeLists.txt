@@ -18,6 +18,8 @@ set(LIBVLC_ARCHIVE "${PACKAGE_DIR}/libvlc-${LIBVLC_NIGHTLY_VERSION}.7z")
 set(LIBVLC_ARCHIVE_ROOT "vlc-${LIBVLC_VERSION}/")
 set(LIBVLC_SOURCE "${PACKAGE_DIR}/vlc-${LIBVLC_VERSION}")
 
+set(LIBVLCPP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libvlcpp")
+
 add_custom_target(LIBVLC_EXTRACT ALL)
 get_directory_property(_HAS_PARENT_DIRECTORY PARENT_DIRECTORY)
 if(NOT _HAS_PARENT_DIRECTORY)
@@ -69,7 +71,10 @@ if (NOT EXISTS "${LIBVLC_SOURCE}")
 endif()
 
 add_library(${LIBRARY_NAME} STATIC
-  test.cc
+  globals.cc
+  base/task_queue.cc
+  vlc/vlc_environment.cc
+  vlc/vlc_player.cc
 )
 
 add_dependencies(${LIBRARY_NAME} LIBVLC_EXTRACT)

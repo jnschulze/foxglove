@@ -10,6 +10,7 @@ set(PLUGIN_NAME "foxglove_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
   "foxglove_plugin.cpp"
+  "method_channel_handler.cc"
 )
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
