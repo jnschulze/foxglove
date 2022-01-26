@@ -51,6 +51,14 @@ const T* TryGetMapElement(const flutter::EncodableMap* map,
   return nullptr;
 }
 
+bool TryConvertPlaylistMode(int32_t value, PlaylistMode& playlist_mode) {
+  if (value < PlaylistMode::last_value) {
+    playlist_mode = static_cast<PlaylistMode>(value);
+    return true;
+  }
+  return false;
+}
+
 std::unique_ptr<Media> TryCreateMedia(const flutter::EncodableMap* map) {
   auto media_type = TryGetMapElement<std::string>(map, "type");
   auto resource = TryGetMapElement<std::string>(map, "resource");
@@ -62,8 +70,32 @@ std::unique_ptr<Media> TryCreateMedia(const flutter::EncodableMap* map) {
   return nullptr;
 }
 
+void TryPopulatePlaylist(Playlist* playlist, const flutter::EncodableMap* map,
+                         PlaylistMode& playlist_mode) {
+  auto medias = TryGetMapElement<flutter::EncodableList>(map, "medias");
+  if (medias) {
+    for (const auto& item : *medias) {
+      if (auto media_map = std::get_if<flutter::EncodableMap>(&item)) {
+        auto media = TryCreateMedia(media_map);
+        if (media) {
+          playlist->Add(std::move(media));
+        }
+      }
+    }
+  }
+
+  if (auto mode = TryGetMapElement<int32_t>(map, "mode")) {
+    TryConvertPlaylistMode(*mode, playlist_mode);
+  }
+}
+
 constexpr auto kMethodOpen = "open";
 constexpr auto kMethodPlay = "play";
+constexpr auto kMethodPause = "pause";
+constexpr auto kMethodStop = "stop";
+constexpr auto kMethodNext = "next";
+constexpr auto kMethodPrevious = "previous";
+constexpr auto kMethodSetPlaylistMode = "setPlaylistMode";
 
 }  // namespace
 
@@ -106,18 +138,75 @@ void PlayerBridge::HandleMethodCall(
             result->Success();
           });
         }
+      } else if (auto playlist_map =
+                     TryGetMapElement<flutter::EncodableMap>(map, "playlist")) {
+        auto playlist = player_->CreatePlaylist();
+        PlaylistMode mode = PlaylistMode::single;
+        TryPopulatePlaylist(playlist.get(), playlist_map, mode);
+        return task_queue_->Enqueue([player = player_,
+                                     playlist_ptr = playlist.release(), mode,
+                                     result = shared_result]() {
+          std::unique_ptr<Playlist> playlist(playlist_ptr);
+          player->Open(std::move(playlist));
+          player->SetPlaylistMode(mode);
+          result->Success();
+        });
       }
     }
 
     return shared_result->Error("invalid args");
   }
 
-  if(method_name.compare(kMethodPlay) == 0) {
-    result->Success();
+  if (method_name.compare(kMethodPlay) == 0) {
+    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+      player->Play();
+      result->Success();
+    });
+  }
+
+  if (method_name.compare(kMethodPause) == 0) {
+    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+      player->Pause();
+      result->Success();
+    });
+  }
+
+  if (method_name.compare(kMethodStop) == 0) {
+    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+      player->Stop();
+      result->Success();
+    });
+  }
+
+  if (method_name.compare(kMethodNext) == 0) {
+    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+      player->Next();
+      result->Success();
+    });
+  }
+
+  if (method_name.compare(kMethodPrevious) == 0) {
+    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+      player->Previous();
+      result->Success();
+    });
+  }
+
+  if (method_name.compare(kMethodSetPlaylistMode) == 0) {
+    if (auto value = std::get_if<int32_t>(method_call.arguments())) {
+      PlaylistMode mode = PlaylistMode::single;
+      if (TryConvertPlaylistMode(*value, mode)) {
+        return task_queue_->Enqueue(
+            [player = player_, mode, result = shared_result]() {
+              player->SetPlaylistMode(mode);
+              result->Success();
+            });
+      }
+    }
+    return result->Error("bad arguments");
   }
 
   std::cerr << "GOT METHOD CALL " << method_name << std::endl;
-
   shared_result->NotImplemented();
 }
 

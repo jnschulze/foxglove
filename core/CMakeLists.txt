@@ -71,10 +71,12 @@ if (NOT EXISTS "${LIBVLC_SOURCE}")
 endif()
 
 add_library(${LIBRARY_NAME} STATIC
+  events.cc
   globals.cc
   base/task_queue.cc
   vlc/vlc_environment.cc
   vlc/vlc_player.cc
+  vlc/vlc_playlist.cc
 )
 
 add_dependencies(${LIBRARY_NAME} LIBVLC_EXTRACT)

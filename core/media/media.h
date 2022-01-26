@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-#include "media_source.h"
+#include "media/media_source.h"
 
 namespace foxglove {
 

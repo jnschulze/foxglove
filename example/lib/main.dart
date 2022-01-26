@@ -36,16 +36,30 @@ class _MyAppState extends State<MyApp> {
     final player = await p.createPlayer();
     //await player?.dispose();
 
-    final m = Media.file(
-        File(r'C:\Users\10261369\Videos\bbb_sunflower_1080p_30fps_normal.mp4'));
+    final m = Media.file(File(r'C:\Users\10261369\Videos\a.mp4'));
 
     //await p.disposeEnvironment(envId);
 
+    final m2 = Media.file(File(r'C:\Users\10261369\Videos\b.mp4'));
+
+    //await player?.open(m);
+
+    //final pl = Playlist(medias: [m], playlistMode: PlaylistMode.repeat);
+
     await player?.open(m);
+    await player?.setPlaylistMode(PlaylistMode.loop);
 
     await player?.play();
 
-    int x = 5;
+    await Future.delayed(Duration(seconds: 10));
+
+    //await player?.open(m2);
+
+    //await player?.stop();
+
+    //await player?.dispose();
+
+    //int x = 5;
   }
 
   @override

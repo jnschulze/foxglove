@@ -13,6 +13,7 @@ class VlcEnvironment : public PlayerEnvironment,
   ~VlcEnvironment() override;
 
   std::unique_ptr<Player> CreatePlayer() override;
+  VLC::Instance vlc_instance() const { return vlc_instance_; }
 
  private:
   VLC::Instance vlc_instance_;

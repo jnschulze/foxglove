@@ -1,8 +1,8 @@
-#include "vlc_environment.h"
+#include "vlc/vlc_environment.h"
 
 #include <iostream>
 
-#include "vlc_player.h"
+#include "vlc/vlc_player.h"
 
 namespace foxglove {
 
