@@ -1,4 +1,4 @@
-import 'package:foxglove/src/enums/media_source_type.dart';
+import 'package:foxglove/src/enums.dart';
 
 abstract class MediaSource {
   MediaSourceType get mediaSourceType;

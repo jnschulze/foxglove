@@ -1,7 +1,9 @@
-export 'package:foxglove/src/enums/media_source_type.dart';
-export 'package:foxglove/src/enums/media_type.dart';
-export 'package:foxglove/src/enums/playlist_mode.dart';
-export 'package:foxglove/src/media_source/media.dart';
-export 'package:foxglove/src/media_source/media_source.dart';
-export 'package:foxglove/src/media_source/playlist.dart';
-export 'package:foxglove/src/player.dart';
+export 'package:foxglove/src/media/media.dart';
+export 'package:foxglove/src/media/media_source.dart';
+export 'package:foxglove/src/media/playlist.dart';
+export 'package:foxglove/src/base.dart';
+export 'package:foxglove/src/player_state.dart';
+export 'package:foxglove/src/player_platform.dart';
+export 'package:foxglove/src/method_channel_player.dart';
+export 'package:foxglove/src/widgets/video.dart';
+export 'package:foxglove/src/enums.dart';

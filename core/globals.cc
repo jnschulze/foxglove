@@ -45,6 +45,11 @@ std::shared_ptr<PlayerEnvironment> EnvironmentRegistry::RemoveEnvironment(
   return {};
 }
 
+void EnvironmentRegistry::Clear() {
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  items_.clear();
+}
+
 PlayerRegistry::PlayerRegistry() {}
 
 void PlayerRegistry::InsertPlayer(int64_t player_id,

@@ -50,11 +50,11 @@ class Media : public MediaSource {
     return media;
   }
 
-  std::string Type() { return "media"; }
-  std::string& media_type() { return media_type_; };
-  std::string& resource() { return resource_; };
-  std::string& location() { return location_; };
-  std::map<std::string, std::string>& metas() { return metas_; };
+  const std::string type() const { return "media"; }
+  const std::string media_type() const { return media_type_; };
+  const std::string resource() const { return resource_; };
+  const std::string location() const { return location_; };
+  //std::map<std::string, std::string>& metas() const { return metas_; };
 
  private:
   std::string media_type_;

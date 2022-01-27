@@ -38,12 +38,12 @@ class VlcPlaylist : public Playlist {
   }
 
   // |Playlist|
-  bool TryGetItem(uint32_t index, std::shared_ptr<Media>& media_item) const {
+  std::shared_ptr<Media> GetItem(uint32_t index) const override {
+    const std::lock_guard<std::mutex> lock(mutex_);
     if (index < media_list_.size()) {
-      media_item = media_list_[index];
-      return true;
+      return media_list_[index];
     }
-    return false;
+    return {};
   }
 
   void OnUpdate(UpdateCallback update_callback) {
@@ -54,9 +54,9 @@ class VlcPlaylist : public Playlist {
 
   std::optional<int> GetIndexOfItem(VLC::Media& media) {
     int index;
-    //vlc_media_list_.lock();
+    vlc_media_list_.lock();
     index = vlc_media_list_.indexOfItem(media);
-    //vlc_media_list_.unlock();
+    vlc_media_list_.unlock();
     return index >= 0 ? std::make_optional(index) : std::nullopt;
   }
 

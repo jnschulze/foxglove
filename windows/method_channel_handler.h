@@ -14,30 +14,35 @@ namespace foxglove {
 namespace windows {
 class MethodChannelHandler {
  public:
-  MethodChannelHandler(ObjectRegistry *object_registry, flutter::BinaryMessenger* binary_messenger);
+  MethodChannelHandler(ObjectRegistry* object_registry,
+                       flutter::BinaryMessenger* binary_messenger,
+                       flutter::TextureRegistrar* texture_registrar);
 
   void HandleMethodCall(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   void CreateEnvironment(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void DisposeEnvironment(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void CreatePlayer(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void DisposePlayer(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
  private:
-  ObjectRegistry *registry_;
+  ObjectRegistry* registry_;
+  flutter::TextureRegistrar* texture_registrar_;
   flutter::BinaryMessenger* binary_messenger_;
-  //std::unordered_map<int64_t, std::unique_ptr<PlayerBridge>> players_;
-  std::unique_ptr<TaskQueue> task_queue_;
+  // std::unordered_map<int64_t, std::unique_ptr<PlayerBridge>> players_;
+  std::shared_ptr<TaskQueue> task_queue_;
+
+  int64_t CreateVideoOutput(Player* player);
 };
 }  // namespace windows
 }  // namespace foxglove

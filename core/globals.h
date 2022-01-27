@@ -17,6 +17,7 @@ class EnvironmentRegistry {
 
   void RegisterEnvironment(int64_t id, std::shared_ptr<PlayerEnvironment> env);
   std::shared_ptr<PlayerEnvironment> RemoveEnvironment(int64_t id);
+  void Clear();
 
  private:
   std::mutex map_mutex_;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <iostream>
 #include <mutex>
 
@@ -7,6 +8,7 @@
 #include "player.h"
 #include "vlc/vlc_environment.h"
 #include "vlc/vlc_playlist.h"
+#include "vlc/vlc_video_output.h"
 
 namespace foxglove {
 
@@ -23,6 +25,40 @@ struct VlcEventRegistration {
   VLC::EventManager::RegisteredEvent registration_;
 };
 
+struct VlcMediaState {
+  int64_t duration;
+  double position;
+  int32_t index;
+  PlaybackState playback_state;
+  std::optional<int64_t> pending_seek_time;
+  VLC::MediaPtr current_item;
+  bool is_seekable;
+
+  VlcMediaState() { Reset(); }
+
+  void Reset() {
+    duration = 0;
+    position = 0;
+    index = 0;
+    playback_state = PlaybackState::kNone;
+    pending_seek_time.reset();
+    current_item.reset();
+    is_seekable = false;
+  }
+};
+
+struct VlcPlayerState {
+  bool is_playlist;
+  PlaylistMode playlist_mode;
+
+  VlcPlayerState() { Reset(); }
+
+  void Reset() {
+    is_playlist = false;
+    playlist_mode = PlaylistMode::single;
+  }
+};
+
 class VlcPlayer : public Player {
  public:
   VlcPlayer(std::shared_ptr<VlcEnvironment> environment);
@@ -35,6 +71,13 @@ class VlcPlayer : public Player {
     event_delegate_ = std::move(event_delegate);
   }
 
+  std::unique_ptr<VideoOutput> CreatePixelBufferOutput(
+      std::unique_ptr<PixelBufferOutputDelegate> output_delegate,
+      PixelFormat pixel_format) const override;
+
+  void SetVideoOutput(std::unique_ptr<VideoOutput> output) override;
+  VideoOutput* GetVideoOutput() const override { return video_output_.get(); }
+
   std::unique_ptr<Playlist> CreatePlaylist() override;
 
   void Open(std::unique_ptr<Media> media) override;
@@ -43,15 +86,35 @@ class VlcPlayer : public Player {
   void Play() override;
   void Pause() override;
   void Stop() override;
+  void StopSync(
+      std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+  void SeekPosition(float position) override;
+  void SeekTime(int64_t time) override;
+  void SetRate(float rate);
 
   void Next() override;
   void Previous() override;
 
   void SetPlaylistMode(PlaylistMode playlist_mode) override;
+  void SetVolume(double volume) override;
+  void SetMute(bool is_muted) override;
+
+  int64_t duration() override;
+
+  libvlc_media_player_t* vlc_player() const { return media_player_.get(); }
 
  private:
   typedef std::function<void()> VoidCallback;
+  VlcMediaState media_state_;
+  VlcPlayerState state_;
   std::mutex op_mutex_;
+  std::mutex state_mutex_;
+
+  std::mutex stop_mutex_;
+  std::condition_variable stop_cond_;
+  bool is_stopped_ = false;
+
+  std::unique_ptr<VlcVideoOutput> video_output_;
   std::shared_ptr<VlcEnvironment> environment_;
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
   VLC::MediaPlayer media_player_;
@@ -59,10 +122,13 @@ class VlcPlayer : public Player {
   std::unique_ptr<VlcPlaylist> playlist_;
   std::vector<std::unique_ptr<VlcEventRegistration>> event_registrations_;
 
-  void OpenInternal(std::unique_ptr<VlcPlaylist> playlist);
+  void OpenInternal(std::unique_ptr<VlcPlaylist> playlist, bool is_playlist);
   void PlayInternal();
   void PauseInternal();
-  void StopInternal();
+  bool StopInternal();
+  void StopSyncInternal(
+      std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+  void SetPlaylistModeInternal(PlaylistMode playlist_mode);
   void OnPlaylistUpdated();
   void LoadPlaylist();
 
@@ -70,6 +136,10 @@ class VlcPlayer : public Player {
 
   void SetupEventHandlers();
   void HandleVlcState(PlaybackState state);
+  void HandleMediaChanged(VLC::MediaPtr vlc_media_ptr);
+  void HandlePositionChanged(float relative_position);
+  void HandleSeekableChanged(bool is_seekable);
+  void NotifyStateChanged();
   void Subscribe(VLC::EventManager::RegisteredEvent ev);
 };
 

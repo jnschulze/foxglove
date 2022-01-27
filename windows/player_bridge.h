@@ -18,6 +18,16 @@ class PlayerBridge : public PlayerEventDelegate {
   PlayerBridge(flutter::BinaryMessenger* messenger, Player* player);
   ~PlayerBridge() override;
 
+  void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
+                      size_t index) override;
+  void OnPlaybackStateChanged(PlaybackState playback_state,
+                              bool is_seekable) override;
+  void OnPositionChanged(double position, int64_t duration) override;
+  void OnRateChanged(double rate) override;
+  void OnVolumeChanged(double volume) override;
+  void OnMute(bool is_muted) override;
+  void OnVideoDimensionsChanged(int32_t width, int32_t height) override;
+
  private:
   Player* player_;
   std::unique_ptr<TaskQueue> task_queue_;
@@ -30,6 +40,8 @@ class PlayerBridge : public PlayerEventDelegate {
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  void EmitEvent(const flutter::EncodableValue& event);
 };
 
 }  // namespace windows

@@ -20,15 +20,14 @@ class Playlist : public MediaSource {
         : medias_(medias), playlist_mode_(playlist_mode){};
         */
 
-  std::string Type() { return "playlist"; }
+  const std::string type() const { return "playlist"; }
 
   virtual const std::vector<std::shared_ptr<Media>>& medias() const = 0;
   virtual void Add(std::shared_ptr<Media> media) = 0;
   virtual void Remove(uint32_t index) = 0;
   virtual void Insert(uint32_t index, std::shared_ptr<Media> media) = 0;
   virtual void Move(uint32_t from, uint32_t to) = 0;
-  virtual bool TryGetItem(uint32_t index,
-                          std::shared_ptr<Media>& media_item) const = 0;
+  virtual std::shared_ptr<Media> GetItem(uint32_t index) const = 0;
   virtual size_t length() const = 0;
 
  protected:

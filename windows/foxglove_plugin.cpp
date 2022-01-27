@@ -17,30 +17,31 @@ namespace {
 
 class FoxglovePlugin : public flutter::Plugin {
  public:
-  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
+  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 
-  FoxglovePlugin(flutter::BinaryMessenger *binary_messenger);
+  FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
+                 flutter::TextureRegistrar* texture_registrar);
 
   virtual ~FoxglovePlugin();
 
  private:
-  flutter::BinaryMessenger *binary_messenger_;
   std::unique_ptr<foxglove::windows::MethodChannelHandler>
       method_channel_handler_;
 };
 
 // static
 void FoxglovePlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows *registrar) {
+    flutter::PluginRegistrarWindows* registrar) {
   auto channel =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           registrar->messenger(), "foxglove",
           &flutter::StandardMethodCodec::GetInstance());
 
-  auto plugin = std::make_unique<FoxglovePlugin>(registrar->messenger());
+  auto plugin = std::make_unique<FoxglovePlugin>(
+      registrar->messenger(), registrar->texture_registrar());
 
   channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto &call, auto result) {
+      [plugin_pointer = plugin.get()](const auto& call, auto result) {
         plugin_pointer->method_channel_handler_->HandleMethodCall(
             call, std::move(result));
       });
@@ -48,13 +49,16 @@ void FoxglovePlugin::RegisterWithRegistrar(
   registrar->AddPlugin(std::move(plugin));
 }
 
-FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger *binary_messenger)
-    : binary_messenger_(binary_messenger_),
-      method_channel_handler_(
+FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
+                               flutter::TextureRegistrar* texture_registrar)
+    : method_channel_handler_(
           std::make_unique<foxglove::windows::MethodChannelHandler>(
-              foxglove::g_registry.get(), binary_messenger)) {}
+              foxglove::g_registry.get(), binary_messenger,
+              texture_registrar)) {}
 
-FoxglovePlugin::~FoxglovePlugin() {}
+FoxglovePlugin::~FoxglovePlugin() {
+  foxglove::g_registry->environments()->Clear();
+}
 
 }  // namespace
 

@@ -19,7 +19,12 @@ static std::unique_ptr<const char* []> ToCharArray(
 }
 }  // namespace
 
-VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options) {
+VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options)
+    : VlcEnvironment(options, std::make_shared<TaskQueue>()) {}
+
+VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
+                               std::shared_ptr<TaskQueue> task_queue)
+    : task_queue_(task_queue) {
   if (options.empty()) {
     vlc_instance_ = VLC::Instance(0, nullptr);
   } else {

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:foxglove/foxglove.dart';
 
 void main() {
@@ -18,7 +17,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
+  Player? _player;
 
   @override
   void initState() {
@@ -28,12 +27,33 @@ class _MyAppState extends State<MyApp> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> initPlatformState() async {
-    final p = PlayerPlatform();
+    final p = PlayerPlatform.instance;
 
     //final envId = await p.createEnvironment(args: ['ABC', 'DEF']);
     //final player = await p.createPlayer(environmentId: envId);
 
-    final player = await p.createPlayer();
+    _player = await p.createPlayer(environmentArgs: [
+      '--no-osd',
+      '--file-caching=10000',
+      '--high-priority',
+      '--no-audio'
+    ]);
+    final player = _player!;
+
+    setState(() {});
+
+    player.generalStream.listen((event) {
+      print("VOLUME CHANGED ${event.volume}");
+    });
+
+    player.playbackStream.listen((pb) {
+      print("Status ${pb.playbackState}");
+    });
+
+    player.currentMediaStream.listen((event) {
+      int x = 5;
+    });
+
     //await player?.dispose();
 
     final m = Media.file(File(r'C:\Users\10261369\Videos\a.mp4'));
@@ -44,16 +64,27 @@ class _MyAppState extends State<MyApp> {
 
     //await player?.open(m);
 
-    //final pl = Playlist(medias: [m], playlistMode: PlaylistMode.repeat);
+    final pl = Playlist(medias: [m, m2], playlistMode: PlaylistMode.loop);
 
-    await player?.open(m);
-    await player?.setPlaylistMode(PlaylistMode.loop);
+    await player.open(m);
+    await player.setPlaylistMode(PlaylistMode.loop);
 
-    await player?.play();
+    // await player.setVolume(0.75);
 
-    await Future.delayed(Duration(seconds: 10));
+    //await player.seekTime(Duration(seconds: 5));
 
-    //await player?.open(m2);
+    //await player.play();
+
+    await Future.delayed(Duration(seconds: 15));
+    //await player.stop();
+
+    await player.open(m2);
+
+    //await Future.delayed(Duration(seconds: 5));
+
+    //await player.dispose();
+
+    //await player.play();
 
     //await player?.stop();
 
@@ -70,8 +101,8 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Running on: $_platformVersion\n'),
-        ),
+            child:
+                _player == null ? const SizedBox() : Video(player: _player!)),
       ),
     );
   }
