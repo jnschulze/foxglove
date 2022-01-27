@@ -71,9 +71,17 @@ class VlcPlayer : public Player {
     event_delegate_ = std::move(event_delegate);
   }
 
+  // |VideoOutputFactory|
   std::unique_ptr<VideoOutput> CreatePixelBufferOutput(
       std::unique_ptr<PixelBufferOutputDelegate> output_delegate,
       PixelFormat pixel_format) const override;
+
+#ifdef _WIN32
+  // |VideoOutputFactory|
+  std::unique_ptr<VideoOutput> CreateD3D11Output(
+      std::unique_ptr<D3D11OutputDelegate> output_delegate,
+      IDXGIAdapter* adapter = nullptr) const override;
+#endif
 
   void SetVideoOutput(std::unique_ptr<VideoOutput> output) override;
   VideoOutput* GetVideoOutput() const override { return video_output_.get(); }

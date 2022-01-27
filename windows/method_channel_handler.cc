@@ -25,10 +25,12 @@ constexpr auto kErrorCodeInvalidId = "invalid_id";
 
 MethodChannelHandler::MethodChannelHandler(
     ObjectRegistry* object_registry, flutter::BinaryMessenger* binary_messenger,
-    flutter::TextureRegistrar* texture_registrar)
+    flutter::TextureRegistrar* texture_registrar,
+    winrt::com_ptr<IDXGIAdapter> graphics_adapter)
     : registry_(object_registry),
       binary_messenger_(binary_messenger),
       texture_registrar_(texture_registrar),
+      graphics_adapter_(std::move(graphics_adapter)),
       task_queue_(std::make_shared<TaskQueue>()) {}
 
 void MethodChannelHandler::HandleMethodCall(
@@ -144,7 +146,9 @@ int64_t MethodChannelHandler::CreateVideoOutput(Player* player) {
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
   auto outlet = std::make_unique<VideoOutletD3d>(texture_registrar_);
   texture_id = outlet->texture_id();
-  player->SetVideoOutput(std::make_unique<D3D11Output>(std::move(outlet)));
+  auto video_output =
+      player->CreateD3D11Output(std::move(outlet), graphics_adapter_.get());
+  player->SetVideoOutput(std::move(video_output));
 #else
   auto outlet = std::make_unique<VideoOutlet>(texture_registrar_);
   texture_id = outlet->texture_id();

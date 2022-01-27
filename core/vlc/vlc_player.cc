@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "vlc/vlc_d3d11_output.h"
 #include "vlc/vlc_pixel_buffer_output.h"
 #include "vlc/vlc_playlist.h"
 
@@ -37,6 +38,14 @@ std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
   return std::make_unique<VlcPixelBufferOutput>(std::move(output_delegate),
                                                 pixel_format);
 }
+
+#ifdef _WIN32
+std::unique_ptr<VideoOutput> VlcPlayer::CreateD3D11Output(
+    std::unique_ptr<D3D11OutputDelegate> output_delegate,
+    IDXGIAdapter* adapter) const {
+  return std::make_unique<VlcD3D11Output>(std::move(output_delegate), adapter);
+}
+#endif
 
 void VlcPlayer::SetVideoOutput(std::unique_ptr<VideoOutput> video_output) {
   if (auto vlc_output =

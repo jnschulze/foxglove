@@ -16,7 +16,8 @@ class MethodChannelHandler {
  public:
   MethodChannelHandler(ObjectRegistry* object_registry,
                        flutter::BinaryMessenger* binary_messenger,
-                       flutter::TextureRegistrar* texture_registrar);
+                       flutter::TextureRegistrar* texture_registrar,
+                       winrt::com_ptr<IDXGIAdapter> graphics_adapter);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -37,6 +38,7 @@ class MethodChannelHandler {
 
  private:
   ObjectRegistry* registry_;
+  winrt::com_ptr<IDXGIAdapter> graphics_adapter_;
   flutter::TextureRegistrar* texture_registrar_;
   flutter::BinaryMessenger* binary_messenger_;
   // std::unordered_map<int64_t, std::unique_ptr<PlayerBridge>> players_;

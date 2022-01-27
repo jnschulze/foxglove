@@ -78,6 +78,7 @@ add_library(${LIBRARY_NAME} STATIC
   vlc/vlc_player.cc
   vlc/vlc_playlist.cc
   vlc/vlc_pixel_buffer_output.cc
+  vlc/vlc_d3d11_output.cc
 )
 
 add_dependencies(${LIBRARY_NAME} LIBVLC_EXTRACT)

@@ -20,7 +20,8 @@ class FoxglovePlugin : public flutter::Plugin {
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 
   FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
-                 flutter::TextureRegistrar* texture_registrar);
+                 flutter::TextureRegistrar* texture_registrar,
+                 flutter::FlutterView* view);
 
   virtual ~FoxglovePlugin();
 
@@ -37,8 +38,9 @@ void FoxglovePlugin::RegisterWithRegistrar(
           registrar->messenger(), "foxglove",
           &flutter::StandardMethodCodec::GetInstance());
 
-  auto plugin = std::make_unique<FoxglovePlugin>(
-      registrar->messenger(), registrar->texture_registrar());
+  auto plugin = std::make_unique<FoxglovePlugin>(registrar->messenger(),
+                                                 registrar->texture_registrar(),
+                                                 registrar->GetView());
 
   channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto& call, auto result) {
@@ -50,11 +52,23 @@ void FoxglovePlugin::RegisterWithRegistrar(
 }
 
 FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
-                               flutter::TextureRegistrar* texture_registrar)
-    : method_channel_handler_(
-          std::make_unique<foxglove::windows::MethodChannelHandler>(
-              foxglove::g_registry.get(), binary_messenger,
-              texture_registrar)) {}
+                               flutter::TextureRegistrar* texture_registrar,
+                               flutter::FlutterView* view) {
+  winrt::com_ptr<IDXGIAdapter> graphics_adapter;
+#ifdef HAVE_FLUTTER_D3D_TEXTURE
+  if (view->GetGraphicsAdapter(graphics_adapter.put())) {
+    DXGI_ADAPTER_DESC desc;
+    if (SUCCEEDED(graphics_adapter_->GetDesc(&desc))) {
+      std::wcerr << "Graphics adapter: " << desc.Description << std::endl;
+    }
+  }
+#endif
+
+  method_channel_handler_ =
+      std::make_unique<foxglove::windows::MethodChannelHandler>(
+          foxglove::g_registry.get(), binary_messenger, texture_registrar,
+          std::move(graphics_adapter));
+}
 
 FoxglovePlugin::~FoxglovePlugin() {
   foxglove::g_registry->environments()->Clear();
