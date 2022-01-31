@@ -11,10 +11,26 @@ set(PLUGIN_NAME "foxglove_plugin")
 add_library(${PLUGIN_NAME} SHARED
   "foxglove_plugin.cpp"
   "method_channel_handler.cc"
-  "method_channel_utils.cc"
   "player_bridge.cc"
   "video/video_outlet.cc"
 )
+
+if(FOXGLOVE_USE_D3D_TEXTURE)
+  target_compile_definitions("${PLUGIN_NAME}" PRIVATE
+    HAVE_FLUTTER_D3D_TEXTURE
+  )
+  target_sources("${PLUGIN_NAME}" PRIVATE
+    "video/video_outlet_d3d.cc"
+  )
+endif()
+
+if(FOXGLOVE_USE_EXPERIMENTAL_ENGINE_FEATURES)
+  target_compile_definitions("${PLUGIN_NAME}" PRIVATE
+    HAVE_FLUTTER_TASK_RUNNER
+  )
+endif()
+
+
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden

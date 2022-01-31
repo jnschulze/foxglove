@@ -11,6 +11,8 @@ abstract class Player {
   // Texture id.
   int get textureId;
 
+  bool get isDisposed;
+
   /// State of the current & opened [MediaSource] in [Player] instance.
   CurrentMediaState get currentMedia;
 

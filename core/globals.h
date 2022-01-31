@@ -30,6 +30,7 @@ class PlayerRegistry {
 
   void InsertPlayer(int64_t player_id, std::unique_ptr<Player> player);
   std::unique_ptr<Player> RemovePlayer(int64_t player_id);
+  void Clear();
 
  private:
   std::mutex map_mutex_;

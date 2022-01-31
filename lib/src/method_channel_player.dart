@@ -91,14 +91,22 @@ class MethodChannelPlayer extends PlayerPlatform with _StreamControllers {
 
 class _PlayerImpl with _StreamControllers implements Player {
   final PlayerPlatform platform;
+
   @override
   final int id;
+
   @override
   final int textureId;
+
+  @override
+  bool get isDisposed => _isDisposed;
+
   final DisposeCallback _disposeCallback;
   final MethodChannel _methodChannel;
   final EventChannel _eventChannel;
   StreamSubscription? _eventChannelSubscription;
+  bool _isDisposed = false;
+
   _PlayerImpl(
       {required this.platform,
       required this.id,
@@ -148,6 +156,10 @@ class _PlayerImpl with _StreamControllers implements Player {
 
   @override
   Future<void> open(MediaSource source, {bool autoStart = true}) async {
+    if (_isDisposed) {
+      return;
+    }
+
     if (source is Media) {
       await _methodChannel.invokeMethod(
           'open', {'media': source.toJson(), 'autostart': autoStart});
@@ -159,69 +171,108 @@ class _PlayerImpl with _StreamControllers implements Player {
 
   @override
   Future<void> setPlaylistMode(PlaylistMode mode) async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('setPlaylistMode', mode.index);
   }
 
   @override
   Future<void> play() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('play');
   }
 
   @override
   Future<void> pause() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('pause');
   }
 
   @override
   Future<void> stop() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('stop');
   }
 
   @override
   Future<void> next() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('next');
   }
 
   @override
   Future<void> previous() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('previous');
   }
 
   @override
   Future<void> seekPosition(double position) async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('seekPosition', position);
   }
 
   @override
   Future<void> seekTime(Duration position) async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('seekTime', position.inMilliseconds);
   }
 
   @override
   Future<void> setRate(double rate) async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('setRate', rate);
   }
 
   @override
   Future<void> setVolume(double volume) async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('setVolume', volume);
   }
 
   @override
   Future<void> mute() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('mute');
   }
 
   @override
   Future<void> unmute() async {
+    if (_isDisposed) {
+      return;
+    }
     await _methodChannel.invokeMethod('unmute');
   }
 
   @override
   Future<void> dispose() async {
-    _eventChannelSubscription?.cancel();
-    _disposeCallback(id);
-    _closeControllers();
+    if (!_isDisposed) {
+      _isDisposed = true;
+      _eventChannelSubscription?.cancel();
+      _disposeCallback(id);
+      _closeControllers();
+    }
   }
 
   void _handlePlatformEvent(Map<dynamic, dynamic> ev) {

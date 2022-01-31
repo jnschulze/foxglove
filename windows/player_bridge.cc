@@ -83,6 +83,8 @@ constexpr auto kMethodUnmute = "unmute";
 constexpr auto kEventType = "type";
 constexpr auto kEventValue = "value";
 
+constexpr auto kErrorBadArgs = "invalid_arguments";
+
 enum Events : int32_t {
   kNone,
   kPositionChanged,
@@ -96,8 +98,12 @@ enum Events : int32_t {
 
 }  // namespace
 
-PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger, Player* player)
-    : player_(player), task_queue_(std::make_unique<TaskQueue>()) {
+PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
+                           FlutterTaskRunner* platform_task_runner,
+                           Player* player)
+    : player_(player),
+      platform_task_runner_(platform_task_runner),
+      task_queue_(std::make_unique<TaskQueue>()) {
   auto method_channel_name = string_format("foxglove/%I64i", player->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -107,24 +113,29 @@ PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger, Player* player)
     HandleMethodCall(call, std::move(result));
   });
 
-  const auto event_channel_name =
-      string_format("foxglove/%I64i/events", player->id());
-  event_channel_ =
-      std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
-          messenger, event_channel_name,
-          &flutter::StandardMethodCodec::GetInstance());
+  task_queue_->Enqueue([this, messenger, player_id = player->id()]() {
+    const auto event_channel_name =
+        string_format("foxglove/%I64i/events", player_id);
+    event_channel_ =
+        std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
+            messenger, event_channel_name,
+            &flutter::StandardMethodCodec::GetInstance());
 
-  auto handler = std::make_unique<
-      flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-      [this](const flutter::EncodableValue* arguments,
-             std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
-                 events) {
-        event_sink_ = std::move(events);
-        return nullptr;
-      },
-      [](const flutter::EncodableValue* arguments) { return nullptr; });
+    auto handler = std::make_unique<
+        flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
+        [this](const flutter::EncodableValue* arguments,
+               std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
+                   events) {
+          event_sink_ = std::move(events);
+          return nullptr;
+        },
+        [this](const flutter::EncodableValue* arguments) {
+          event_sink_.reset();
+          return nullptr;
+        });
 
-  event_channel_->SetStreamHandler(std::move(handler));
+    event_channel_->SetStreamHandler(std::move(handler));
+  });
 }
 
 PlayerBridge::~PlayerBridge() {
@@ -182,7 +193,7 @@ void PlayerBridge::HandleMethodCall(
       }
     }
 
-    return shared_result->Error("invalid args");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodPlay) == 0) {
@@ -228,7 +239,7 @@ void PlayerBridge::HandleMethodCall(
             result->Success();
           });
     }
-    return shared_result->Error("bad arguments");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodSeekTime) == 0) {
@@ -239,7 +250,7 @@ void PlayerBridge::HandleMethodCall(
             result->Success();
           });
     }
-    return shared_result->Error("bad arguments");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodSetRate) == 0) {
@@ -250,7 +261,7 @@ void PlayerBridge::HandleMethodCall(
             result->Success();
           });
     }
-    return shared_result->Error("bad arguments");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodSetPlaylistMode) == 0) {
@@ -264,7 +275,7 @@ void PlayerBridge::HandleMethodCall(
             });
       }
     }
-    return shared_result->Error("bad arguments");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodSetVolume) == 0) {
@@ -275,7 +286,7 @@ void PlayerBridge::HandleMethodCall(
             result->Success();
           });
     }
-    return shared_result->Error("bad arguments");
+    return shared_result->Error(kErrorBadArgs);
   }
 
   if (method_name.compare(kMethodMute) == 0) {
@@ -292,7 +303,7 @@ void PlayerBridge::HandleMethodCall(
     });
   }
 
-  std::cerr << "GOT METHOD CALL " << method_name << std::endl;
+  std::cerr << "Got method call: " << method_name << std::endl;
   shared_result->NotImplemented();
 }
 
@@ -305,71 +316,85 @@ void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
 void PlayerBridge::OnMediaChanged(const Media* media,
                                   std::unique_ptr<MediaInfo> media_info,
                                   size_t index) {
-  //
-  //
-
-  const auto event = flutter::EncodableValue(
-      flutter::EncodableMap{{kEventType, Events::kMediaChanged},
-                            {"media",
-                             flutter::EncodableMap{
-                                 {"type", media->media_type()},
-                                 {"resource", media->resource()},
-                             }},
-                            {"duration", media_info->duration()},
-                            {"index", static_cast<int32_t>(index)}});
-  EmitEvent(event);
+  auto duration = media_info->duration();
+  auto type = media->media_type();
+  auto resource = media->resource();
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(
+        flutter::EncodableMap{{kEventType, Events::kMediaChanged},
+                              {"media",
+                               flutter::EncodableMap{
+                                   {"type", type},
+                                   {"resource", resource},
+                               }},
+                              {"duration", duration},
+                              {"index", static_cast<int32_t>(index)}});
+    EmitEvent(event);
+  });
 }
 
 void PlayerBridge::OnPlaybackStateChanged(PlaybackState state,
                                           bool is_seekable) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kPlaybackStateChanged},
-      {"state", static_cast<int32_t>(state)},
-      {"is_seekable", is_seekable},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kPlaybackStateChanged},
+        {"state", static_cast<int32_t>(state)},
+        {"is_seekable", is_seekable},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 void PlayerBridge::OnPositionChanged(double position, int64_t duration) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kPositionChanged},
-      {"duration", duration},
-      {"position", position},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kPositionChanged},
+        {"duration", duration},
+        {"position", position},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 void PlayerBridge::OnRateChanged(double rate) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kRateChanged},
-      {kEventValue, rate},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kRateChanged},
+        {kEventValue, rate},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 void PlayerBridge::OnVolumeChanged(double volume) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kVolumeChanged},
-      {kEventValue, volume},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kVolumeChanged},
+        {kEventValue, volume},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 void PlayerBridge::OnMute(bool is_muted) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kMuteChanged},
-      {kEventValue, is_muted},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kMuteChanged},
+        {kEventValue, is_muted},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 void PlayerBridge::OnVideoDimensionsChanged(int32_t width, int32_t height) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kVideoDimensionsChanged},
-      {"width", width},
-      {"height", height},
+  platform_task_runner_->PostTask([=]() {
+    const auto event = flutter::EncodableValue(flutter::EncodableMap{
+        {kEventType, kVideoDimensionsChanged},
+        {"width", width},
+        {"height", height},
+    });
+    EmitEvent(event);
   });
-  EmitEvent(event);
 }
 
 }  // namespace windows

@@ -2,8 +2,8 @@
 
 #include <mutex>
 
-#include "video/video_output.h"
 #include "video/pixel_buffer_output.h"
+#include "video/video_output.h"
 #include "video_outlet_base.h"
 
 namespace foxglove {

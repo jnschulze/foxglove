@@ -1,12 +1,14 @@
 #include "method_channel_handler.h"
 
+#include <cassert>
+
 #include "method_channel_utils.h"
 #include "player_environment.h"
 #include "video/video_outlet.h"
 #include "vlc/vlc_environment.h"
 
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
-#include "video_outlet_d3d.h"
+#include "video/video_outlet_d3d.h"
 #endif
 
 namespace foxglove {
@@ -26,12 +28,16 @@ constexpr auto kErrorCodeInvalidId = "invalid_id";
 MethodChannelHandler::MethodChannelHandler(
     ObjectRegistry* object_registry, flutter::BinaryMessenger* binary_messenger,
     flutter::TextureRegistrar* texture_registrar,
-    winrt::com_ptr<IDXGIAdapter> graphics_adapter)
+    winrt::com_ptr<IDXGIAdapter> graphics_adapter,
+    FlutterTaskRunner* platform_task_runner)
     : registry_(object_registry),
       binary_messenger_(binary_messenger),
       texture_registrar_(texture_registrar),
       graphics_adapter_(std::move(graphics_adapter)),
-      task_queue_(std::make_shared<TaskQueue>()) {}
+      platform_task_runner_(platform_task_runner),
+      task_queue_(std::make_shared<TaskQueue>()) {
+  assert(platform_task_runner_);
+}
 
 void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -73,8 +79,9 @@ void MethodChannelHandler::CreateEnvironment(
 
   task_queue_->Enqueue([this, args = std::move(env_args), shared_result]() {
     auto env = std::make_shared<foxglove::VlcEnvironment>(args, task_queue_);
-    registry_->environments()->RegisterEnvironment(env->id(), std::move(env));
-    shared_result->Success(env->id());
+    auto id = env->id();
+    registry_->environments()->RegisterEnvironment(id, std::move(env));
+    shared_result->Success(id);
   });
 }
 
@@ -130,8 +137,8 @@ void MethodChannelHandler::CreatePlayer(
     }
 
     auto player = env->CreatePlayer();
-    player->SetEventDelegate(
-        std::make_unique<PlayerBridge>(binary_messenger_, player.get()));
+    player->SetEventDelegate(std::make_unique<PlayerBridge>(
+        binary_messenger_, platform_task_runner_, player.get()));
     auto id = player->id();
     auto texture_id = CreateVideoOutput(player.get());
     registry_->players()->InsertPlayer(id, std::move(player));

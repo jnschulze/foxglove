@@ -70,6 +70,11 @@ std::unique_ptr<Player> PlayerRegistry::RemovePlayer(int64_t player_id) {
   return player;
 }
 
+void PlayerRegistry::Clear() {
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  items_.clear();
+}
+
 ObjectRegistry::ObjectRegistry()
     : environment_registry_(std::make_unique<EnvironmentRegistry>()),
       player_registry_(std::make_unique<PlayerRegistry>()) {}

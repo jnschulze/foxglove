@@ -2,12 +2,14 @@
 
 #include <flutter/event_channel.h>
 #include <flutter/method_channel.h>
+#include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 #include <flutter/texture_registrar.h>
 
 #include <memory>
 
 #include "base/task_queue.h"
+#include "flutter_task_runner.h"
 #include "player.h"
 
 namespace foxglove {
@@ -15,7 +17,8 @@ namespace windows {
 
 class PlayerBridge : public PlayerEventDelegate {
  public:
-  PlayerBridge(flutter::BinaryMessenger* messenger, Player* player);
+  PlayerBridge(flutter::BinaryMessenger* messenger,
+               FlutterTaskRunner* platform_task_runner, Player* player);
   ~PlayerBridge() override;
 
   void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
@@ -30,6 +33,7 @@ class PlayerBridge : public PlayerEventDelegate {
 
  private:
   Player* player_;
+  FlutterTaskRunner* platform_task_runner_;
   std::unique_ptr<TaskQueue> task_queue_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
