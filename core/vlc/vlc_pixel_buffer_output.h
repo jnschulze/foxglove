@@ -12,6 +12,7 @@ class VlcPixelBufferOutput : public VlcVideoOutput {
                        PixelFormat format);
 
   void Attach(VlcPlayer* player) override;
+  void Shutdown() override;
 
   void OnDimensionsChanged(
       VideoDimensionsCallback dimensions_callback) override {

@@ -17,6 +17,9 @@ VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
 }
 
 void VideoOutletD3d::Present() {
+  if (shutting_down_) {
+    return;
+  }
   texture_registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
@@ -47,9 +50,14 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   }
 }
 
-VideoOutletD3d::~VideoOutletD3d() {
-  texture_registrar_->UnregisterTexture(texture_id_);
+void VideoOutletD3d::Shutdown() {
+  if (!shutting_down_) {
+    shutting_down_ = true;
+    texture_registrar_->UnregisterTexture(texture_id_);
+  }
 }
+
+VideoOutletD3d::~VideoOutletD3d() { Shutdown(); }
 
 }  // namespace windows
 }  // namespace foxglove

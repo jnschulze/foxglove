@@ -30,7 +30,23 @@ VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment)
   SetupEventHandlers();
 }
 
-VlcPlayer::~VlcPlayer() { std::cerr << "destroying player" << std::endl; }
+VlcPlayer::~VlcPlayer() { Shutdown(); }
+
+void VlcPlayer::Shutdown() {
+  if (shutting_down_) {
+    return;
+  }
+  shutting_down_ = true;
+
+  video_output_->Shutdown();
+
+  if (playlist_) {
+    playlist_->OnUpdate(nullptr);
+    playlist_.reset();
+  }
+
+  StopSync();
+}
 
 std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
     std::unique_ptr<PixelBufferOutputDelegate> output_delegate,

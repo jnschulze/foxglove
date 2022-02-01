@@ -26,6 +26,8 @@ void VlcD3D11Output::Attach(VlcPlayer* player) {
       SelectPlaneCb, this);
 }
 
+void VlcD3D11Output::Shutdown() { delegate_->Shutdown(); }
+
 void VlcD3D11Output::Initialize() {
   IDXGIAdapter* preferred_adapter = adapter_.get();
 

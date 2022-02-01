@@ -13,9 +13,11 @@ class VideoOutletD3d : public TextureOutlet, public D3D11OutputDelegate {
   int64_t texture_id() const override { return texture_id_; }
   void SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) override;
   void Present() override;
+  void Shutdown() override;
   virtual ~VideoOutletD3d();
 
  private:
+  std::atomic<bool> shutting_down_ = false;
   flutter::TextureRegistrar* texture_registrar_ = nullptr;
   std::unique_ptr<flutter::TextureVariant> texture_ = nullptr;
   int64_t texture_id_;

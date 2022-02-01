@@ -31,6 +31,7 @@ class VlcD3D11Output : public VlcVideoOutput {
                  IDXGIAdapter* adapter);
 
   void Attach(VlcPlayer* player) override;
+  void Shutdown() override;
 
   void OnDimensionsChanged(
       VideoDimensionsCallback dimensions_callback) override {

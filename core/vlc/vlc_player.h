@@ -64,7 +64,9 @@ class VlcPlayer : public Player {
   VlcPlayer(std::shared_ptr<VlcEnvironment> environment);
   ~VlcPlayer() override;
 
-  inline bool IsValid() { return true; }
+  inline bool IsValid() { return !shutting_down_; }
+
+  void Shutdown();
 
   void SetEventDelegate(
       std::unique_ptr<PlayerEventDelegate> event_delegate) override {
@@ -117,6 +119,7 @@ class VlcPlayer : public Player {
   VlcPlayerState state_;
   std::mutex op_mutex_;
   std::mutex state_mutex_;
+  bool shutting_down_ = false;
 
   std::mutex stop_mutex_;
   std::condition_variable stop_cond_;
