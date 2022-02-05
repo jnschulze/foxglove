@@ -53,9 +53,9 @@ extension on Playlist {
   }
 }
 
-typedef DisposeCallback = Future<void> Function(int id);
+typedef DisposeCallback = Future<void> Function();
 
-class MethodChannelPlayer extends PlayerPlatform with _StreamControllers {
+class MethodChannelPlayer extends PlayerPlatform {
   static const MethodChannel _channel = MethodChannel('foxglove');
 
   @override
@@ -85,7 +85,13 @@ class MethodChannelPlayer extends PlayerPlatform with _StreamControllers {
         platform: this,
         id: playerId,
         textureId: textureId,
-        disposeCallback: (id) => _channel.invokeMethod('disposePlayer', id));
+        disposeCallback: () async {
+          await _disposePlayer(playerId);
+        });
+  }
+
+  Future<void> _disposePlayer(int id) async {
+    await _channel.invokeMethod('disposePlayer', id);
   }
 }
 
@@ -111,7 +117,7 @@ class _PlayerImpl with _StreamControllers implements Player {
       {required this.platform,
       required this.id,
       required this.textureId,
-      required disposeCallback})
+      required DisposeCallback disposeCallback})
       : _disposeCallback = disposeCallback,
         _methodChannel = MethodChannel('foxglove/$id'),
         _eventChannel = EventChannel('foxglove/$id/events') {
@@ -269,13 +275,17 @@ class _PlayerImpl with _StreamControllers implements Player {
   Future<void> dispose() async {
     if (!_isDisposed) {
       _isDisposed = true;
-      _eventChannelSubscription?.cancel();
-      _disposeCallback(id);
       _closeControllers();
+      _eventChannelSubscription?.cancel();
+      await _disposeCallback();
     }
   }
 
   void _handlePlatformEvent(Map<dynamic, dynamic> ev) {
+    if (_isDisposed) {
+      return;
+    }
+
     final event = _PlatformEvent.values[ev['type'] as int];
 
     switch (event) {
@@ -326,7 +336,7 @@ class _PlayerImpl with _StreamControllers implements Player {
         _videoDimensionsStreamController.sink.add(_videoDimensions);
         break;
       default:
-        print("Got unknown event");
+        print('Got unknown event');
     }
   }
 }

@@ -32,6 +32,21 @@ VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
     vlc_instance_ =
         VLC::Instance(static_cast<int32_t>(options.size()), opts.get());
   }
+
+#ifndef NDEBUG
+  vlc_instance_.setExitHandler(
+      []() { std::cerr << "VLC ON EXIT" << std::endl; });
+#endif
+
+  vlc_instance_.logSet(
+      [](int level, const libvlc_log_t* ctx, std::string message) {
+#ifndef NDEBUG
+        if (level < LIBVLC_WARNING) {
+          return;
+        }
+        std::cerr << "[VLC] (" << level << ") " << message << std::endl;
+#endif
+      });
 }
 
 VlcEnvironment::~VlcEnvironment() {

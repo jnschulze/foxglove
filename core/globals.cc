@@ -70,6 +70,11 @@ std::unique_ptr<Player> PlayerRegistry::RemovePlayer(int64_t player_id) {
   return player;
 }
 
+size_t PlayerRegistry::Count() {
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  return items_.size();
+}
+
 void PlayerRegistry::Clear() {
   std::lock_guard<std::mutex> lock(map_mutex_);
   items_.clear();

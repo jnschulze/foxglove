@@ -14,7 +14,6 @@ struct RenderContext {
 
   winrt::com_ptr<ID3D11Texture2D> texture;
   winrt::com_ptr<ID3D11Texture2D> texture_vlc;
-  HANDLE texture_shared_handle;
 
   winrt::com_ptr<ID3D11Device> d3d_device;
   winrt::com_ptr<ID3D11DeviceContext> d3d_context;
@@ -29,6 +28,7 @@ class VlcD3D11Output : public VlcVideoOutput {
  public:
   VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,
                  IDXGIAdapter* adapter);
+  ~VlcD3D11Output() override;
 
   void Attach(VlcPlayer* player) override;
   void Shutdown() override;
@@ -53,6 +53,7 @@ class VlcD3D11Output : public VlcVideoOutput {
 
   void Initialize();
   void SetDimensions(VideoDimensions&);
+  void ReleaseTextures(vlc::RenderContext* context);
 
   static bool SetupCb(void** opaque, const libvlc_video_setup_device_cfg_t* cfg,
                       libvlc_video_setup_device_info_t* out);

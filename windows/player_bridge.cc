@@ -100,10 +100,11 @@ enum Events : int32_t {
 
 PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
                            FlutterTaskRunner* platform_task_runner,
+                           std::shared_ptr<TaskQueue> task_queue,
                            Player* player)
     : player_(player),
       platform_task_runner_(platform_task_runner),
-      task_queue_(std::make_unique<TaskQueue>()) {
+      task_queue_(std::move(task_queue)) {
   auto method_channel_name = string_format("foxglove/%I64i", player->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -113,33 +114,32 @@ PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
     HandleMethodCall(call, std::move(result));
   });
 
-  task_queue_->Enqueue([this, messenger, player_id = player->id()]() {
-    const auto event_channel_name =
-        string_format("foxglove/%I64i/events", player_id);
-    event_channel_ =
-        std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
-            messenger, event_channel_name,
-            &flutter::StandardMethodCodec::GetInstance());
+  const auto event_channel_name =
+      string_format("foxglove/%I64i/events", player->id());
+  event_channel_ =
+      std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
+          messenger, event_channel_name,
+          &flutter::StandardMethodCodec::GetInstance());
 
-    auto handler = std::make_unique<
-        flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-        [this](const flutter::EncodableValue* arguments,
-               std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
-                   events) {
-          event_sink_ = std::move(events);
-          return nullptr;
-        },
-        [this](const flutter::EncodableValue* arguments) {
-          event_sink_.reset();
-          return nullptr;
-        });
+  auto handler = std::make_unique<
+      flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
+      [this](const flutter::EncodableValue* arguments,
+             std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
+                 events) {
+        event_sink_ = std::move(events);
+        return nullptr;
+      },
+      [this](const flutter::EncodableValue* arguments) {
+        event_sink_.reset();
+        return nullptr;
+      });
 
-    event_channel_->SetStreamHandler(std::move(handler));
-  });
+  event_channel_->SetStreamHandler(std::move(handler));
 }
 
 PlayerBridge::~PlayerBridge() {
   method_channel_->SetMethodCallHandler(nullptr);
+  event_channel_->SetStreamHandler(nullptr);
 }
 
 void PlayerBridge::HandleMethodCall(

@@ -18,7 +18,6 @@ struct VlcEventRegistration {
       : registration_(registration) {}
 
   ~VlcEventRegistration() {
-    std::cerr << "Destroying event registration" << std::endl;
     registration_->unregister();
   }
 

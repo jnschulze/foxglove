@@ -24,20 +24,20 @@ void VideoOutletD3d::Present() {
 }
 
 void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
-  std::cerr << "SET TEXTURE" << std::endl;
+  d3d_texture_ = std::move(texture);
 
-  if (!texture) {
+  if (!d3d_texture_) {
     surface_descriptor_ = {};
     return;
   }
 
   D3D11_TEXTURE2D_DESC desc{};
-  texture->GetDesc(&desc);
+  d3d_texture_->GetDesc(&desc);
 
   winrt::com_ptr<IDXGIResource1> shared_resource;
   HANDLE handle;
-  if (!SUCCEEDED(texture->QueryInterface(__uuidof(IDXGIResource1),
-                                         (LPVOID*)shared_resource.put())) ||
+  if (!SUCCEEDED(d3d_texture_->QueryInterface(__uuidof(IDXGIResource1),
+                                              shared_resource.put_void())) ||
       !SUCCEEDED(shared_resource->GetSharedHandle(&handle))) {
     std::cerr << "Obtaining texture shared handle failed." << std::endl;
     surface_descriptor_ = {};
@@ -53,6 +53,7 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
 void VideoOutletD3d::Shutdown() {
   if (!shutting_down_) {
     shutting_down_ = true;
+    surface_descriptor_ = {};
     texture_registrar_->UnregisterTexture(texture_id_);
   }
 }

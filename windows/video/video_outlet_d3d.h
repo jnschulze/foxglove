@@ -20,6 +20,7 @@ class VideoOutletD3d : public TextureOutlet, public D3D11OutputDelegate {
   std::atomic<bool> shutting_down_ = false;
   flutter::TextureRegistrar* texture_registrar_ = nullptr;
   std::unique_ptr<flutter::TextureVariant> texture_ = nullptr;
+  winrt::com_ptr<ID3D11Texture2D> d3d_texture_;
   int64_t texture_id_;
 
   FlutterDesktopGpuSurfaceDescriptor surface_descriptor_{};

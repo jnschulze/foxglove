@@ -100,6 +100,18 @@ class _VideoStateTexture extends _VideoStateBase {
 
   @override
   void initState() {
+    super.initState();
+    _updateSubscriptions();
+  }
+
+  @override
+  void didUpdateWidget(Video oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateSubscriptions();
+  }
+
+  void _updateSubscriptions() {
+    _videoDimensionsSubscription?.cancel();
     _videoDimensionsSubscription =
         widget.player.videoDimensionsStream.listen((dimensions) {
       setState(() {
@@ -110,8 +122,6 @@ class _VideoStateTexture extends _VideoStateBase {
 
     _videoWidth = widget.player.videoDimensions.width.toDouble();
     _videoHeight = widget.player.videoDimensions.height.toDouble();
-
-    super.initState();
   }
 
   @override

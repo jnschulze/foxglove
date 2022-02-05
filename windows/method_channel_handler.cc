@@ -138,7 +138,7 @@ void MethodChannelHandler::CreatePlayer(
 
     auto player = env->CreatePlayer();
     player->SetEventDelegate(std::make_unique<PlayerBridge>(
-        binary_messenger_, platform_task_runner_, player.get()));
+        binary_messenger_, platform_task_runner_, task_queue_, player.get()));
     auto id = player->id();
     auto texture_id = CreateVideoOutput(player.get());
     registry_->players()->InsertPlayer(id, std::move(player));
@@ -175,7 +175,8 @@ void MethodChannelHandler::DisposePlayer(
         shared_result = std::move(result);
 
     task_queue_->Enqueue([id = *id, shared_result, registry = registry_]() {
-      if (registry->players()->RemovePlayer(id)) {
+      auto player = registry->players()->RemovePlayer(id);
+      if (player) {
         shared_result->Success();
       } else {
         shared_result->Error(kErrorCodeInvalidId);

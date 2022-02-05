@@ -18,7 +18,8 @@ namespace windows {
 class PlayerBridge : public PlayerEventDelegate {
  public:
   PlayerBridge(flutter::BinaryMessenger* messenger,
-               FlutterTaskRunner* platform_task_runner, Player* player);
+               FlutterTaskRunner* platform_task_runner,
+               std::shared_ptr<TaskQueue> task_queue, Player* player);
   ~PlayerBridge() override;
 
   void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
@@ -34,7 +35,7 @@ class PlayerBridge : public PlayerEventDelegate {
  private:
   Player* player_;
   FlutterTaskRunner* platform_task_runner_;
-  std::unique_ptr<TaskQueue> task_queue_;
+  std::shared_ptr<TaskQueue> task_queue_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       method_channel_;
