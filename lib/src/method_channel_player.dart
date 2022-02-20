@@ -56,7 +56,8 @@ extension on Playlist {
 typedef DisposeCallback = Future<void> Function();
 
 class MethodChannelPlayer extends PlayerPlatform {
-  static const MethodChannel _channel = MethodChannel('foxglove');
+  static final MethodChannel _channel = const MethodChannel('foxglove')
+    ..invokeMethod('init');
 
   @override
   Future<int> createEnvironment({List<String>? args}) async {

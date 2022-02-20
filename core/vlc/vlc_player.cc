@@ -21,11 +21,19 @@ std::unique_ptr<TDerived> unique_pointer_cast(TBase base) {
 
 }  // namespace
 
+#ifdef NDEBUG
+#define PLAYER_LOG(msg)
+#else
+#define PLAYER_LOG(msg) \
+  std::cerr << "Player [" << id() << "]: " << msg << std::endl;
+#endif
+
 VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment)
     : environment_(environment) {
-  media_player_ = VLC::MediaPlayer(environment_->vlc_instance());
-  media_list_player_ = VLC::MediaListPlayer(environment_->vlc_instance());
-  media_list_player_.setMediaPlayer(media_player_);
+  media_player_ = VLC::MediaPlayer(*environment_->vlc_instance());
+
+  media_list_player_ = std::make_shared<VlcMediaListPlayer>(environment);
+  media_list_player_->SetMediaPlayer(media_player_);
 
   SetupEventHandlers();
 }
@@ -33,6 +41,8 @@ VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment)
 VlcPlayer::~VlcPlayer() { Shutdown(); }
 
 void VlcPlayer::Shutdown() {
+  PLAYER_LOG("Shutting down");
+
   if (shutting_down_) {
     return;
   }
@@ -40,12 +50,13 @@ void VlcPlayer::Shutdown() {
 
   video_output_->Shutdown();
 
-  if (playlist_) {
-    playlist_->OnUpdate(nullptr);
-    playlist_.reset();
+  auto playlist = media_list_player_->playlist();
+  if (playlist) {
+    playlist->OnUpdate(nullptr);
   }
+  media_list_player_->SetPlaylist(nullptr);
 
-  StopSync();
+  StopSyncInternal();
 }
 
 std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
@@ -79,11 +90,11 @@ void VlcPlayer::SetVideoOutput(std::unique_ptr<VideoOutput> video_output) {
 }
 
 std::unique_ptr<Playlist> VlcPlayer::CreatePlaylist() {
-  return std::make_unique<VlcPlaylist>(environment_->vlc_instance());
+  return std::make_unique<VlcPlaylist>(environment_);
 }
 
 void VlcPlayer::Open(std::unique_ptr<Media> media) {
-  auto playlist = std::make_unique<VlcPlaylist>(environment_->vlc_instance());
+  auto playlist = std::make_unique<VlcPlaylist>(environment_);
   playlist->Add(std::move(media));
 
   {
@@ -102,33 +113,27 @@ void VlcPlayer::Open(std::unique_ptr<Playlist> playlist) {
 
 void VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
                              bool is_playlist) {
-  if (playlist_) {
-    playlist_->OnUpdate(nullptr);
+  if (!IsValid()) {
+    return;
   }
 
-  media_list_player_.setMediaList(VLC::MediaList());
+  auto old_playlist = media_list_player_->playlist();
+  if (old_playlist) {
+    old_playlist->OnUpdate(nullptr);
+  }
 
-  StopSyncInternal();
+  // StopSyncInternal();
+  StopInternal();
   media_state_.Reset();
   state_.is_playlist = is_playlist;
 
-  playlist_ = std::move(playlist);
-  playlist_->OnUpdate([this]() { OnPlaylistUpdated(); });
-
-  // std::cerr << "LENGTH IS " << playlist_->length() << std::endl;
-
-  LoadPlaylist();
+  playlist->OnUpdate([this]() { OnPlaylistUpdated(); });
+  media_list_player_->SetPlaylist(std::move(playlist));
 }
 
 void VlcPlayer::OnPlaylistUpdated() {
   std::lock_guard<std::mutex> lock(op_mutex_);
-  LoadPlaylist();
-}
-
-void VlcPlayer::LoadPlaylist() {
-  if (playlist_) {
-    media_list_player_.setMediaList(playlist_->vlc_media_list());
-  }
+  // LoadPlaylist();
 }
 
 void VlcPlayer::Play() {
@@ -138,7 +143,7 @@ void VlcPlayer::Play() {
   }
 }
 
-void VlcPlayer::PlayInternal() { media_list_player_.play(); }
+void VlcPlayer::PlayInternal() { media_list_player_->Play(); }
 
 void VlcPlayer::Pause() {
   std::lock_guard<std::mutex> lock(op_mutex_);
@@ -147,7 +152,7 @@ void VlcPlayer::Pause() {
   }
 }
 
-void VlcPlayer::PauseInternal() { media_list_player_.pause(); }
+void VlcPlayer::PauseInternal() { media_list_player_->Pause(); }
 
 void VlcPlayer::Stop() {
   std::lock_guard<std::mutex> lock(op_mutex_);
@@ -157,19 +162,15 @@ void VlcPlayer::Stop() {
 }
 
 bool VlcPlayer::StopInternal() {
-  auto playlist_mode = state_.playlist_mode;
+  /*
+  std::promise<bool> promise;
+  std::async([this, &promise]() {
+    promise.set_value(media_list_player_->StopAsync());
+  }).wait();
+  return promise.get_future().get();
+  */
 
-  // VLC won't stop unless Playback mode is set to default
-  // SetPlaylistModeInternal(PlaylistMode::single);
-
-  bool stopping = libvlc_media_player_stop_async(media_player_.get()) == 0;
-  libvlc_media_list_player_stop_async(media_list_player_.get());
-
-  // Restore previous playlist mode
-  // SetPlaylistModeInternal(playlist_mode);
-
-  return stopping;
-  // return false;
+  return media_list_player_->StopAsync();
 }
 
 void VlcPlayer::StopSync(std::optional<std::chrono::milliseconds> timeout) {
@@ -181,7 +182,7 @@ void VlcPlayer::StopSync(std::optional<std::chrono::milliseconds> timeout) {
 
 void VlcPlayer::StopSyncInternal(
     std::optional<std::chrono::milliseconds> timeout) {
-  std::cerr << "PRE STOP SYNC" << std::endl;
+  PLAYER_LOG("Pre StopSync");
 
   {
     std::unique_lock<std::mutex> lock(stop_mutex_);
@@ -200,7 +201,7 @@ void VlcPlayer::StopSyncInternal(
     }
   }
 
-  std::cerr << "POST STOP SYNC" << std::endl;
+  PLAYER_LOG("Post StopSync");
 }
 
 void VlcPlayer::SeekPosition(float position) {
@@ -233,11 +234,11 @@ void VlcPlayer::SetRate(float rate) {
 }
 
 void VlcPlayer::Next() {
-  SafeInvoke([this]() { media_list_player_.next(); });
+  SafeInvoke([this]() { media_list_player_->Next(); });
 }
 
 void VlcPlayer::Previous() {
-  SafeInvoke([this]() { media_list_player_.previous(); });
+  SafeInvoke([this]() { media_list_player_->Previous(); });
 }
 
 void VlcPlayer::SetPlaylistMode(PlaylistMode mode) {
@@ -248,18 +249,7 @@ void VlcPlayer::SetPlaylistMode(PlaylistMode mode) {
 }
 
 void VlcPlayer::SetPlaylistModeInternal(PlaylistMode playlist_mode) {
-  libvlc_playback_mode_t mode;
-  switch (playlist_mode) {
-    case PlaylistMode::loop:
-      mode = libvlc_playback_mode_loop;
-      break;
-    case PlaylistMode::repeat:
-      mode = libvlc_playback_mode_repeat;
-      break;
-    default:
-      mode = libvlc_playback_mode_default;
-  }
-  media_list_player_.setPlaybackMode(mode);
+  media_list_player_->SetPlaylistMode(playlist_mode);
 }
 
 void VlcPlayer::SetVolume(double volume) {
@@ -272,9 +262,7 @@ void VlcPlayer::SetMute(bool flag) {
   SafeInvoke([this, flag]() { media_player_.setMute(flag); });
 }
 
-int64_t VlcPlayer::duration() {
-  return media_state_.duration;
-}
+int64_t VlcPlayer::duration() { return media_state_.duration; }
 
 void VlcPlayer::SafeInvoke(VoidCallback callback) {
   std::lock_guard<std::mutex> lock(op_mutex_);
@@ -286,64 +274,58 @@ void VlcPlayer::SafeInvoke(VoidCallback callback) {
 void VlcPlayer::SetupEventHandlers() {
   auto& event_manager = media_player_.eventManager();
 
-  // media_list_player_.eventManager().onNextItemSet
+  event_manager.onEncounteredError(
+      []() { std::cerr << "Encountered error" << std::endl; });
 
-  // Subscribe(event_manager.onVout(
-  //    [](int x) { std::cerr << "on vout changed " << x << std::endl; }));
+  event_manager.onNothingSpecial(
+      [this] { HandleVlcState(PlaybackState::kNone); });
 
-  Subscribe(event_manager.onNothingSpecial(
-      [this] { HandleVlcState(PlaybackState::kNone); }));
+  event_manager.onOpening([this] { HandleVlcState(PlaybackState::kOpening); });
 
-  Subscribe(event_manager.onOpening(
-      [this] { HandleVlcState(PlaybackState::kOpening); }));
+  event_manager.onPlaying([this] { HandleVlcState(PlaybackState::kPlaying); });
 
-  Subscribe(event_manager.onPlaying(
-      [this] { HandleVlcState(PlaybackState::kPlaying); }));
+  event_manager.onPaused([this] { HandleVlcState(PlaybackState::kPaused); });
 
-  Subscribe(event_manager.onPaused(
-      [this] { HandleVlcState(PlaybackState::kPaused); }));
+  event_manager.onStopped([this] { HandleVlcState(PlaybackState::kStopped); });
 
-  Subscribe(event_manager.onStopped([this] {
-    HandleVlcState(PlaybackState::kStopped);
-  }));
+  event_manager.onEndReached([this] { HandleVlcState(PlaybackState::kEnded); });
 
-  Subscribe(event_manager.onEndReached(
-      [this] { HandleVlcState(PlaybackState::kEnded); }));
+  event_manager.onMediaChanged(
+      [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
 
-  Subscribe(event_manager.onMediaChanged(
-      [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); }));
+  // event_manager.onLengthChanged([this](int64_t length) {
+  //   // std::cerr << "length changed " << length << std::endl;
+  // });
 
-  Subscribe(event_manager.onLengthChanged([this](int64_t length) {
-    // std::cerr << "length changed " << length << std::endl;
-  }));
+  event_manager.onPositionChanged(
+      [this](float position) { HandlePositionChanged(position); });
 
-  Subscribe(event_manager.onPositionChanged(
-      [this](float position) { HandlePositionChanged(position); }));
+  event_manager.onSeekableChanged(
+      [this](bool is_seekable) { HandleSeekableChanged(is_seekable); });
 
-  Subscribe(event_manager.onSeekableChanged(
-      [this](bool is_seekable) { HandleSeekableChanged(is_seekable); }));
-
-  Subscribe(event_manager.onAudioVolume([this](float value) {
+  event_manager.onAudioVolume([this](float value) {
     if (event_delegate_) {
       event_delegate_->OnVolumeChanged(value);
     }
-  }));
+  });
 
-  Subscribe(event_manager.onMuted([this]() {
+  event_manager.onMuted([this]() {
     if (event_delegate_) {
       event_delegate_->OnMute(true);
     }
-  }));
+  });
 
-  Subscribe(event_manager.onUnmuted([this]() {
+  event_manager.onUnmuted([this]() {
     if (event_delegate_) {
       event_delegate_->OnMute(false);
     }
-  }));
+  });
 }
 
 void VlcPlayer::HandleVlcState(PlaybackState state) {
   bool has_change = false;
+
+  PLAYER_LOG("STATE IS " << PlaybackStateToString(state))
 
   if (state == PlaybackState::kStopped) {
     {
@@ -381,7 +363,7 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
   }
 
   if (!IsValid()) {
-    std::cerr << "INSTANCE DOWN. NOT FIRING CB" << std::endl;
+    PLAYER_LOG("Instance down");
     return;
   }
 
@@ -391,16 +373,14 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
 }
 
 void VlcPlayer::HandleMediaChanged(VLC::MediaPtr vlc_media) {
-  // std::cerr << "MEDIA CHANGED" << std::endl;
-
   std::lock_guard<std::mutex> lock(state_mutex_);
 
-  if (!IsValid() || !playlist_) {
-    std::cerr << "IGNORING MEDIA CHANGE" << std::endl;
+  if (!IsValid()) {
     return;
   }
 
-  auto index = playlist_->vlc_media_list().indexOfItem(*vlc_media.get());
+  auto playlist = media_list_player_->playlist();
+  auto index = playlist->vlc_media_list().indexOfItem(*vlc_media.get());
   if (index == -1) {
     return;
   }
@@ -410,7 +390,7 @@ void VlcPlayer::HandleMediaChanged(VLC::MediaPtr vlc_media) {
   media_state_.duration = vlc_media->duration();
 
   if (event_delegate_) {
-    auto media = playlist_->GetItem(media_state_.index);
+    auto media = playlist->GetItem(media_state_.index);
     if (media) {
       auto media_info = std::make_unique<MediaInfo>(vlc_media->duration());
       event_delegate_->OnMediaChanged(media.get(), std::move(media_info),
@@ -436,10 +416,6 @@ void VlcPlayer::NotifyStateChanged() {
     event_delegate_->OnPlaybackStateChanged(media_state_.playback_state,
                                             media_state_.is_seekable);
   }
-}
-
-void VlcPlayer::Subscribe(VLC::EventManager::RegisteredEvent ev) {
-  event_registrations_.push_back(std::make_unique<VlcEventRegistration>(ev));
 }
 
 }  // namespace foxglove

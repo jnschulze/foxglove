@@ -96,6 +96,11 @@ public:
     {
     }
 
+    MediaPlayer( libvlc_instance_t* instance )
+        : Internal{ libvlc_media_player_new( instance ), libvlc_media_player_release }
+    {
+    }
+
     /**
      * Create a Media Player object from a Media
      *

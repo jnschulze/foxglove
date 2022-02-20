@@ -46,14 +46,13 @@ class VlcD3D11Output : public VlcVideoOutput {
 
  private:
   winrt::com_ptr<IDXGIAdapter> adapter_;
-
   vlc::RenderContext render_context_;
 
   std::unique_ptr<D3D11OutputDelegate> delegate_;
 
-  void Initialize();
+  bool Initialize();
   void SetDimensions(VideoDimensions&);
-  void ReleaseTextures(vlc::RenderContext* context);
+  static void ReleaseTextures(vlc::RenderContext* context);
 
   static bool SetupCb(void** opaque, const libvlc_video_setup_device_cfg_t* cfg,
                       libvlc_video_setup_device_info_t* out);

@@ -142,20 +142,20 @@ public:
      * @param mrl       A path, location, or node name, depending on the 3rd parameter
      * @param type      The type of the 2nd argument. \sa{FromType}
      */
-    Media(Instance& instance, const std::string& mrl, FromType type)
+    Media(libvlc_instance_t* instance, const std::string& mrl, FromType type)
         : Internal{ libvlc_media_release }
     {
         InternalPtr ptr = nullptr;
         switch (type)
         {
         case FromLocation:
-            ptr = libvlc_media_new_location( getInternalPtr<libvlc_instance_t>( instance ), mrl.c_str() );
+            ptr = libvlc_media_new_location( instance, mrl.c_str() );
             break;
         case FromPath:
-            ptr = libvlc_media_new_path( getInternalPtr<libvlc_instance_t>( instance ), mrl.c_str() );
+            ptr = libvlc_media_new_path( instance, mrl.c_str() );
             break;
         case AsNode:
-            ptr = libvlc_media_new_as_node( getInternalPtr<libvlc_instance_t>( instance ), mrl.c_str() );
+            ptr = libvlc_media_new_as_node( instance, mrl.c_str() );
             break;
         default:
             break;
@@ -164,6 +164,14 @@ public:
             throw std::runtime_error("Failed to construct a media");
         m_obj.reset( ptr, libvlc_media_release );
     }
+
+    /**
+     * @brief Media Constructs a libvlc Media instance
+     * @param instance  A libvlc instance
+     * @param mrl       A path, location, or node name, depending on the 3rd parameter
+     * @param type      The type of the 2nd argument. \sa{FromType}
+     */
+    Media(Instance& instance, const std::string& mrl, FromType type) : Media(getInternalPtr<libvlc_instance_t>(instance), mrl, type) {}
 
     /**
      * Create a media for an already open file descriptor.

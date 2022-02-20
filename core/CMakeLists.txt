@@ -18,7 +18,6 @@ set(LIBVLC_URL "https://artifacts.videolan.org/vlc/nightly-win64/${LIBVLC_NIGHTL
 set(LIBVLC_ARCHIVE "${PACKAGE_DIR}/libvlc-${LIBVLC_NIGHTLY_VERSION}.7z")
 set(LIBVLC_ARCHIVE_ROOT "vlc-${LIBVLC_VERSION}/")
 set(LIBVLC_SOURCE "${PACKAGE_DIR}/vlc-${LIBVLC_VERSION}")
-
 set(LIBVLCPP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libvlcpp")
 
 add_custom_target(LIBVLC_EXTRACT ALL)
@@ -76,6 +75,7 @@ add_library(${LIBRARY_NAME} STATIC
   globals.cc
   base/task_queue.cc
   vlc/vlc_environment.cc
+  vlc/vlc_media_list_player.cc
   vlc/vlc_player.cc
   vlc/vlc_playlist.cc
   vlc/vlc_pixel_buffer_output.cc
@@ -93,8 +93,6 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
   "${LIBVLCPP_SOURCE}"
   # libVLC headers.
   "${LIBVLC_SOURCE}/sdk/include"
-  # Dart API headers.
-  "${DARTAPI_SOURCE}"
 )
 
 target_include_directories(${LIBRARY_NAME} INTERFACE

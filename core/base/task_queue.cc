@@ -2,8 +2,14 @@
 
 #include <cassert>
 
+#ifdef _WIN32
+#include <atlconv.h>
+#include <processthreadsapi.h>
+#endif
+
 namespace foxglove {
-TaskQueue::TaskQueue(size_t num_threads) {
+TaskQueue::TaskQueue(size_t num_threads, std::optional<std::string> thread_name)
+    : thread_name_(thread_name) {
   assert(num_threads > 0);
   for (auto i = 0; i < num_threads; i++) {
     workers_.emplace_back(&TaskQueue::Run, this);
@@ -22,6 +28,15 @@ TaskQueue::~TaskQueue() {
 }
 
 void TaskQueue::Run() {
+#ifdef _WIN32
+  if (thread_name_.has_value()) {
+    auto name = thread_name_.value();
+    auto wname = std::wstring(name.begin(), name.end());
+    SetThreadDescription(GetCurrentThread(), wname.c_str());
+  }
+
+#endif
+
   while (true) {
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
 

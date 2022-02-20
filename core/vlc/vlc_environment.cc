@@ -20,37 +20,31 @@ static std::unique_ptr<const char* []> ToCharArray(
 }  // namespace
 
 VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options)
-    : VlcEnvironment(options, std::make_shared<TaskQueue>()) {}
+    : VlcEnvironment(
+          options, std::make_shared<TaskQueue>(1, "io.jns.foxglove.vlcenv")) {}
 
 VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
                                std::shared_ptr<TaskQueue> task_queue)
     : task_queue_(task_queue) {
   if (options.empty()) {
-    vlc_instance_ = VLC::Instance(0, nullptr);
+    instance_ = std::make_unique<VlcInstance>(0, nullptr);
   } else {
     auto opts = ToCharArray(options);
-    vlc_instance_ =
-        VLC::Instance(static_cast<int32_t>(options.size()), opts.get());
+    instance_ = std::make_unique<VlcInstance>(
+        static_cast<int32_t>(options.size()), opts.get());
   }
 
 #ifndef NDEBUG
-  vlc_instance_.setExitHandler(
-      []() { std::cerr << "VLC ON EXIT" << std::endl; });
+  libvlc_set_exit_handler(
+      instance_->get(),
+      [](void* opaque) { std::cerr << "libvlc exit" << std::endl; }, nullptr);
 #endif
-
-  vlc_instance_.logSet(
-      [](int level, const libvlc_log_t* ctx, std::string message) {
-#ifndef NDEBUG
-        if (level < LIBVLC_WARNING) {
-          return;
-        }
-        std::cerr << "[VLC] (" << level << ") " << message << std::endl;
-#endif
-      });
 }
 
 VlcEnvironment::~VlcEnvironment() {
-  std::cerr << "destroy vlc env " << std::endl;
+#ifndef NDEBUG
+  std::cerr << "VlcEnvironment::~VlcEnvironment" << std::endl;
+#endif
 }
 
 std::unique_ptr<Player> VlcEnvironment::CreatePlayer() {

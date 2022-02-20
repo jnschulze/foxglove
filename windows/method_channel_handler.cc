@@ -15,6 +15,7 @@ namespace foxglove {
 namespace windows {
 
 namespace {
+constexpr auto kMethodInitPlatform = "init";
 constexpr auto kMethodCreateEnvironment = "createEnvironment";
 constexpr auto kMethodDisposeEnvironment = "disposeEnvironment";
 constexpr auto kMethodCreatePlayer = "createPlayer";
@@ -35,7 +36,8 @@ MethodChannelHandler::MethodChannelHandler(
       texture_registrar_(texture_registrar),
       graphics_adapter_(std::move(graphics_adapter)),
       platform_task_runner_(platform_task_runner),
-      task_queue_(std::make_shared<TaskQueue>()) {
+      task_queue_(std::make_shared<TaskQueue>(
+          1, "io.jns.foxglove.methodchannelhandler")) {
   assert(platform_task_runner_);
 }
 
@@ -43,6 +45,10 @@ void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   const auto& method_name = method_call.method_name();
+
+  if (method_name.compare(kMethodInitPlatform) == 0) {
+    return InitPlatform(method_call, std::move(result));
+  }
 
   if (method_name.compare(kMethodCreateEnvironment) == 0) {
     return CreateEnvironment(method_call, std::move(result));
@@ -63,6 +69,20 @@ void MethodChannelHandler::HandleMethodCall(
   result->NotImplemented();
 }
 
+void MethodChannelHandler::InitPlatform(
+    const flutter::MethodCall<flutter::EncodableValue>& method_call,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+      shared_result = std::move(result);
+
+  task_queue_->Enqueue([this, shared_result]() {
+    // Clear old instances after hot restart.
+    registry_->players()->Clear();
+    registry_->environments()->Clear();
+    shared_result->Success();
+  });
+}
+
 void MethodChannelHandler::CreateEnvironment(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -78,7 +98,7 @@ void MethodChannelHandler::CreateEnvironment(
       shared_result = std::move(result);
 
   task_queue_->Enqueue([this, args = std::move(env_args), shared_result]() {
-    auto env = std::make_shared<foxglove::VlcEnvironment>(args, task_queue_);
+    auto env = std::make_shared<foxglove::VlcEnvironment>(args);
     auto id = env->id();
     registry_->environments()->RegisterEnvironment(id, std::move(env));
     shared_result->Success(id);
@@ -130,7 +150,7 @@ void MethodChannelHandler::CreatePlayer(
         return shared_result->Error(kErrorCodeInvalidId);
       }
     } else {
-      env = std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
+      env = std::make_shared<foxglove::VlcEnvironment>(env_args);
       if (!env) {
         return shared_result->Error("env_creation_failed");
       }

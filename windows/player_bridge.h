@@ -7,6 +7,7 @@
 #include <flutter/texture_registrar.h>
 
 #include <memory>
+#include <mutex>
 
 #include "base/task_queue.h"
 #include "flutter_task_runner.h"
@@ -36,6 +37,7 @@ class PlayerBridge : public PlayerEventDelegate {
   Player* player_;
   FlutterTaskRunner* platform_task_runner_;
   std::shared_ptr<TaskQueue> task_queue_;
+  std::mutex event_sink_mutex_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       method_channel_;

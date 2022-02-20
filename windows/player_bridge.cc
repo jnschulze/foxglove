@@ -5,11 +5,8 @@
 
 #include <optional>
 
-#include "base/rref.h"
 #include "media/media.h"
 #include "method_channel_utils.h"
-
-// https://stackoverflow.com/questions/8640393/move-capture-in-lambda
 
 namespace foxglove {
 namespace windows {
@@ -130,6 +127,7 @@ PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
         return nullptr;
       },
       [this](const flutter::EncodableValue* arguments) {
+        const std::lock_guard<std::mutex> lock(event_sink_mutex_);
         event_sink_.reset();
         return nullptr;
       });
@@ -308,6 +306,7 @@ void PlayerBridge::HandleMethodCall(
 }
 
 void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
+  const std::lock_guard<std::mutex> lock(event_sink_mutex_);
   if (event_sink_) {
     event_sink_->Success(event);
   }

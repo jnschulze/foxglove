@@ -7,22 +7,11 @@
 #include "events.h"
 #include "player.h"
 #include "vlc/vlc_environment.h"
+#include "vlc/vlc_media_list_player.h"
 #include "vlc/vlc_playlist.h"
 #include "vlc/vlc_video_output.h"
 
 namespace foxglove {
-
-struct VlcEventRegistration {
- public:
-  VlcEventRegistration(VLC::EventManager::RegisteredEvent registration)
-      : registration_(registration) {}
-
-  ~VlcEventRegistration() {
-    registration_->unregister();
-  }
-
-  VLC::EventManager::RegisteredEvent registration_;
-};
 
 struct VlcMediaState {
   int64_t duration;
@@ -124,13 +113,11 @@ class VlcPlayer : public Player {
   std::condition_variable stop_cond_;
   bool is_stopped_ = false;
 
-  std::unique_ptr<VlcVideoOutput> video_output_;
   std::shared_ptr<VlcEnvironment> environment_;
+  std::unique_ptr<VlcVideoOutput> video_output_;
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
   VLC::MediaPlayer media_player_;
-  VLC::MediaListPlayer media_list_player_;
-  std::unique_ptr<VlcPlaylist> playlist_;
-  std::vector<std::unique_ptr<VlcEventRegistration>> event_registrations_;
+  std::shared_ptr<VlcMediaListPlayer> media_list_player_;
 
   void OpenInternal(std::unique_ptr<VlcPlaylist> playlist, bool is_playlist);
   void PlayInternal();
@@ -140,7 +127,6 @@ class VlcPlayer : public Player {
       std::optional<std::chrono::milliseconds> timeout = std::nullopt);
   void SetPlaylistModeInternal(PlaylistMode playlist_mode);
   void OnPlaylistUpdated();
-  void LoadPlaylist();
 
   void SafeInvoke(VoidCallback callback);
 

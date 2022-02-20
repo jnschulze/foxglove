@@ -59,9 +59,17 @@ void VlcD3D11Output::Attach(VlcPlayer* player) {
       SelectPlaneCb, this);
 }
 
-void VlcD3D11Output::Shutdown() { delegate_->Shutdown(); }
+void VlcD3D11Output::Shutdown() {
+  delegate_->Shutdown();
 
-void VlcD3D11Output::Initialize() {
+  // libvlc_video_set_output_callbacks(
+  //     player_->vlc_player(), libvlc_video_engine_disable, nullptr, nullptr,
+  //     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  //     nullptr);
+}
+
+bool VlcD3D11Output::Initialize() {
+  auto render_context = &render_context_;
   IDXGIAdapter* preferred_adapter = adapter_.get();
 
   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -74,29 +82,36 @@ void VlcD3D11Output::Initialize() {
       preferred_adapter,
       (preferred_adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE),
       NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION,
-      render_context_.d3d_device.put(), NULL,
-      render_context_.d3d_context.put());
+      render_context->d3d_device.put(), NULL,
+      render_context->d3d_context.put());
 
-  if (!SUCCEEDED(hr)) {
-    std::cerr << "D3D11CreateDevice failed " << hr << std::endl;
+  if (FAILED(hr)) {
+    std::cerr << "D3D11CreateDevice failed: " << hr << std::endl;
+    return false;
   }
 
   ID3D10Multithread* pMultithread;
-  hr = render_context_.d3d_device->QueryInterface(__uuidof(ID3D10Multithread),
+  hr = render_context->d3d_device->QueryInterface(__uuidof(ID3D10Multithread),
                                                   (void**)&pMultithread);
   if (SUCCEEDED(hr)) {
     pMultithread->SetMultithreadProtected(TRUE);
     pMultithread->Release();
   }
 
-  D3D11CreateDevice(
+  hr = D3D11CreateDevice(
       preferred_adapter,
       (preferred_adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE),
       NULL,
       creationFlags |
           D3D11_CREATE_DEVICE_VIDEO_SUPPORT, /* needed for hardware decoding */
-      NULL, 0, D3D11_SDK_VERSION, render_context_.d3d_device_vlc.put(), NULL,
-      render_context_.d3d_context_vlc.put());
+      NULL, 0, D3D11_SDK_VERSION, render_context->d3d_device_vlc.put(), NULL,
+      render_context->d3d_context_vlc.put());
+  if (FAILED(hr)) {
+    std::cerr << "D3D11CreateDevice failed: " << hr << std::endl;
+    return false;
+  }
+
+  return true;
 }
 
 void VlcD3D11Output::SetDimensions(VideoDimensions& dimensions) {
@@ -109,34 +124,25 @@ void VlcD3D11Output::SetDimensions(VideoDimensions& dimensions) {
 bool VlcD3D11Output::SetupCb(void** opaque,
                              const libvlc_video_setup_device_cfg_t* cfg,
                              libvlc_video_setup_device_info_t* out) {
-  auto impl = reinterpret_cast<VlcD3D11Output*>(*opaque);
-
-  out->d3d11.device_context = impl->render_context_.d3d_context_vlc.get();
-  impl->render_context_.d3d_context_vlc->AddRef();
+  auto self = reinterpret_cast<VlcD3D11Output*>(*opaque);
+  out->d3d11.device_context = self->render_context_.d3d_context_vlc.get();
+  self->render_context_.d3d_context_vlc->AddRef();
 
   return true;
 }
 
 void VlcD3D11Output::CleanupCb(void* opaque) {
-  auto impl = reinterpret_cast<VlcD3D11Output*>(opaque);
-  impl->render_context_.d3d_context_vlc->Release();
+  auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
+  self->render_context_.d3d_context_vlc->AddRef();
 }
 
 void VlcD3D11Output::ResizeCb(void* opaque,
                               void (*report_size_change)(void* report_opaque,
                                                          unsigned width,
                                                          unsigned height),
-                              void* report_opaque) {
-  // std::cerr << "RESIZE" << std::endl;
+                              void* report_opaque) {}
 
-  // if(report_size_change != nullptr) {
-  //   report_size_change(report_opaque, 500, 500);
-  // }
-
-  // auto impl = reinterpret_cast<D3D11Output::Impl*>(opaque);
-  // impl->SendEmptyFrame();
-}
-
+// Static
 void VlcD3D11Output::ReleaseTextures(vlc::RenderContext* context) {
   context->texture_vlc = nullptr;
   context->texture_render_target = nullptr;
@@ -146,13 +152,14 @@ void VlcD3D11Output::ReleaseTextures(vlc::RenderContext* context) {
 bool VlcD3D11Output::UpdateOutputCb(void* opaque,
                                     const libvlc_video_render_cfg_t* cfg,
                                     libvlc_video_output_cfg_t* out) {
-  auto impl = reinterpret_cast<VlcD3D11Output*>(opaque);
+  const DXGI_FORMAT kRenderFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-  impl->ReleaseTextures(&impl->render_context_);
-  impl->SetDimensions(VideoDimensions(cfg->width, cfg->height, 0));
+  auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
+  auto render_context = &self->render_context_;
 
-  // DXGI_FORMAT render_format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  DXGI_FORMAT render_format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  ReleaseTextures(render_context);
+
+  self->SetDimensions(VideoDimensions(cfg->width, cfg->height, 0));
 
   /* interim texture */
   D3D11_TEXTURE2D_DESC texDesc = {};
@@ -162,14 +169,14 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   texDesc.Usage = D3D11_USAGE_DEFAULT;
   texDesc.CPUAccessFlags = 0;
   texDesc.ArraySize = 1;
-  texDesc.Format = render_format;
+  texDesc.Format = kRenderFormat;
   texDesc.Height = cfg->height;
   texDesc.Width = cfg->width;
   texDesc.MiscFlags =
       D3D11_RESOURCE_MISC_SHARED /*| D3D11_RESOURCE_MISC_SHARED_NTHANDLE*/;
 
-  if (FAILED(impl->render_context_.d3d_device->CreateTexture2D(
-          &texDesc, NULL, impl->render_context_.texture.put()))) {
+  if (FAILED(render_context->d3d_device->CreateTexture2D(
+          &texDesc, NULL, render_context->texture.put()))) {
     std::cerr << "creating texture failed " << std::endl;
     return false;
   }
@@ -178,7 +185,7 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
     winrt::com_ptr<IDXGIResource> shared_resource;
     HANDLE shared_handle;
 
-    if (FAILED(impl->render_context_.texture->QueryInterface(
+    if (FAILED(render_context->texture->QueryInterface(
             __uuidof(IDXGIResource), shared_resource.put_void()))) {
       return false;
     }
@@ -187,9 +194,9 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
       return false;
     }
 
-    if (FAILED(impl->render_context_.d3d_device_vlc->OpenSharedResource(
+    if (FAILED(render_context->d3d_device_vlc->OpenSharedResource(
             shared_handle, __uuidof(ID3D11Texture2D),
-            impl->render_context_.texture_vlc.put_void()))) {
+            render_context->texture_vlc.put_void()))) {
       return false;
     }
   }
@@ -198,38 +205,37 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   renderTargetViewDesc.Format = texDesc.Format;
   renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-  if (FAILED(impl->render_context_.d3d_device_vlc->CreateRenderTargetView(
-          impl->render_context_.texture_vlc.get(), &renderTargetViewDesc,
-          impl->render_context_.texture_render_target.put()))) {
+  if (FAILED(render_context->d3d_device_vlc->CreateRenderTargetView(
+          render_context->texture_vlc.get(), &renderTargetViewDesc,
+          render_context->texture_render_target.put()))) {
     return false;
   }
 
   ID3D11RenderTargetView* const targets[1] = {
-      impl->render_context_.texture_render_target.get()};
-  impl->render_context_.d3d_context_vlc->OMSetRenderTargets(1, targets,
-                                                            nullptr);
+      render_context->texture_render_target.get()};
+  render_context->d3d_context_vlc->OMSetRenderTargets(1, targets, nullptr);
 
-  out->dxgi_format = render_format;
+  out->dxgi_format = kRenderFormat;
   out->full_range = true;
   out->colorspace = libvlc_video_colorspace_BT709;
   out->primaries = libvlc_video_primaries_BT709;
   out->transfer = libvlc_video_transfer_func_SRGB;
 
-  impl->delegate_->SetTexture(impl->render_context_.texture);
+  self->delegate_->SetTexture(render_context->texture);
 
   return true;
 }
 
 void VlcD3D11Output::SwapCb(void* opaque) {
-  auto impl = reinterpret_cast<VlcD3D11Output*>(opaque);
-  impl->delegate_->Present();
+  auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
+  self->delegate_->Present();
 }
 
 bool VlcD3D11Output::StartRenderingCb(void* opaque, bool enter) { return true; }
 
 bool VlcD3D11Output::SelectPlaneCb(void* opaque, size_t plane, void* out) {
   ID3D11RenderTargetView** output = static_cast<ID3D11RenderTargetView**>(out);
-  auto impl = reinterpret_cast<VlcD3D11Output*>(opaque);
+  auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
 
   // we only support one packed RGBA plane
   if (plane != 0) {
@@ -238,7 +244,7 @@ bool VlcD3D11Output::SelectPlaneCb(void* opaque, size_t plane, void* out) {
 
   // we don't really need to return it as we already do the
   // OMSetRenderTargets().
-  *output = impl->render_context_.texture_render_target.get();
+  *output = self->render_context_.texture_render_target.get();
   return true;
 }
 

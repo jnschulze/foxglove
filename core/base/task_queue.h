@@ -4,6 +4,8 @@
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <optional>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -12,7 +14,8 @@ namespace foxglove {
 class TaskQueue {
  public:
   typedef std::function<void()> Task;
-  TaskQueue(size_t num_threads = 1);
+  TaskQueue(size_t num_threads,
+            std::optional<std::string> thread_name = std::nullopt);
   ~TaskQueue();
 
   template <typename F>
@@ -32,6 +35,7 @@ class TaskQueue {
 
  private:
   bool done_ = false;
+  std::optional<std::string> thread_name_;
   std::vector<std::thread> workers_;
   std::mutex task_pending_mutex_;
   std::condition_variable task_pending_cv_;
