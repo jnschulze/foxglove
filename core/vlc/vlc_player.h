@@ -19,7 +19,7 @@ struct VlcMediaState {
   int32_t index;
   PlaybackState playback_state;
   std::optional<int64_t> pending_seek_time;
-  VLC::MediaPtr current_item;
+  //VLC::MediaPtr current_item;
   bool is_seekable;
 
   VlcMediaState() { Reset(); }
@@ -30,7 +30,7 @@ struct VlcMediaState {
     index = 0;
     playback_state = PlaybackState::kNone;
     pending_seek_time.reset();
-    current_item.reset();
+    //current_item.reset();
     is_seekable = false;
   }
 };
@@ -118,6 +118,7 @@ class VlcPlayer : public Player {
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
   VLC::MediaPlayer media_player_;
   std::shared_ptr<VlcMediaListPlayer> media_list_player_;
+  std::unique_ptr<VLC::MediaPlayerEventManager> player_event_manager_;
 
   void OpenInternal(std::unique_ptr<VlcPlaylist> playlist, bool is_playlist);
   void PlayInternal();

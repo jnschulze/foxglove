@@ -127,13 +127,12 @@ bool VlcD3D11Output::SetupCb(void** opaque,
   auto self = reinterpret_cast<VlcD3D11Output*>(*opaque);
   out->d3d11.device_context = self->render_context_.d3d_context_vlc.get();
   self->render_context_.d3d_context_vlc->AddRef();
-
   return true;
 }
 
 void VlcD3D11Output::CleanupCb(void* opaque) {
   auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
-  self->render_context_.d3d_context_vlc->AddRef();
+  self->render_context_.d3d_context_vlc->Release();
 }
 
 void VlcD3D11Output::ResizeCb(void* opaque,
