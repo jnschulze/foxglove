@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#ifdef _WIN32
+#if 0
 #include <atlconv.h>
 #include <processthreadsapi.h>
 #endif
@@ -28,13 +28,12 @@ TaskQueue::~TaskQueue() {
 }
 
 void TaskQueue::Run() {
-#ifdef _WIN32
+#if 0
   if (thread_name_.has_value()) {
     auto name = thread_name_.value();
     auto wname = std::wstring(name.begin(), name.end());
     SetThreadDescription(GetCurrentThread(), wname.c_str());
   }
-
 #endif
 
   while (true) {
