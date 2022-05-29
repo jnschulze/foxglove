@@ -7,9 +7,12 @@ VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
     : texture_registrar_(texture_registrar) {
   texture_ =
       std::make_unique<flutter::TextureVariant>(flutter::GpuSurfaceTexture(
-          kFlutterDesktopGpuSurfaceTypeDxgi,
+          kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
           [this](size_t width,
                  size_t height) -> const FlutterDesktopGpuSurfaceDescriptor* {
+            if (surface_descriptor_.handle) {
+              d3d_texture_->AddRef();
+            }
             return &surface_descriptor_;
           }));
 
@@ -47,7 +50,13 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
     surface_descriptor_.height = desc.Height;
     surface_descriptor_.visible_width = desc.Width;
     surface_descriptor_.visible_height = desc.Height;
+    surface_descriptor_.release_context = d3d_texture_.get();
+    surface_descriptor_.release_callback = [](void* release_context) {
+      auto texture = reinterpret_cast<ID3D11Texture2D*>(release_context);
+      texture->Release();
+    };
   }
+  surface_descriptor_.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
 }
 
 void VideoOutletD3d::Shutdown() {
