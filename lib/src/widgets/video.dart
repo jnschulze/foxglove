@@ -83,14 +83,18 @@ abstract class _VideoStateBase extends State<Video> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final player = buildPlayer();
+    return SizedBox(
         width: widget.width ?? double.infinity,
         height: widget.height ?? double.infinity,
-        color: widget.backgroundColor,
-        child: widget.showControls ? present() : present());
+        child: widget.backgroundColor != null
+            ? DecoratedBox(
+                decoration: BoxDecoration(color: widget.backgroundColor),
+                child: player)
+            : player);
   }
 
-  Widget present();
+  Widget buildPlayer();
 }
 
 class _VideoStateTexture extends _VideoStateBase {
@@ -125,19 +129,18 @@ class _VideoStateTexture extends _VideoStateBase {
   }
 
   @override
-  Widget present() {
-    return SizedBox.expand(
-        child: ClipRect(
-            child: FittedBox(
-                alignment: widget.alignment,
-                fit: widget.fit,
-                child: SizedBox(
-                    width: _videoWidth,
-                    height: _videoHeight,
-                    child: Texture(
-                      textureId: widget.player.textureId,
-                      filterQuality: widget.filterQuality,
-                    )))));
+  Widget buildPlayer() {
+    return FittedBox(
+        alignment: widget.alignment,
+        clipBehavior: Clip.hardEdge,
+        fit: widget.fit,
+        child: SizedBox(
+            width: _videoWidth,
+            height: _videoHeight,
+            child: Texture(
+              textureId: widget.player.textureId,
+              filterQuality: widget.filterQuality,
+            )));
   }
 
   @override
@@ -180,9 +183,9 @@ class _VideoStateFallback extends _VideoStateBase {
   }
 
   @override
-  Widget present() {
+  Widget buildPlayer() {
     return videoFrameRawImage != null
         ? SizedBox.expand(child: ClipRect(child: videoFrameRawImage))
-        : Container();
+        : const SizedBox();
   }
 }
