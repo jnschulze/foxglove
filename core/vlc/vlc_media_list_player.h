@@ -46,7 +46,7 @@ class VlcMediaListPlayer
   std::atomic<bool> ignore_player_events_ = false;
 
   void SubscribePlayerEvents();
-  void OnMediaPlayerReachedEnd();
+  void OnMediaPlayerStopping();
   void PlayItemAtIndexInternal(int index);
   void PlayItemAtRelativePosition(int pos, bool manual = false);
   void StartPlayback(int index);

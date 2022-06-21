@@ -478,6 +478,7 @@ public:
         return libvlc_media_save_meta(*this) != 0;
     }
 
+#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
     /**
      * Get current state of media descriptor object. Possible media states
      * are defined in libvlc_structures.c ( libvlc_NothingSpecial=0,
@@ -492,6 +493,7 @@ public:
     {
         return libvlc_media_get_state(*this);
     }
+#endif
 
     /**
      * Get the current statistics about the media

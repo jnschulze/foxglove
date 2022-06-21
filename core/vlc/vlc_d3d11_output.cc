@@ -214,9 +214,11 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
       render_context->texture_render_target.get()};
   render_context->d3d_context_vlc->OMSetRenderTargets(1, targets, nullptr);
 
+  memset(out, 0, sizeof(libvlc_video_output_cfg_t));
+  out->colorspace = libvlc_video_colorspace_BT709;
   out->dxgi_format = kRenderFormat;
   out->full_range = true;
-  out->colorspace = libvlc_video_colorspace_BT709;
+  out->orientation = libvlc_video_orient_top_left;
   out->primaries = libvlc_video_primaries_BT709;
   out->transfer = libvlc_video_transfer_func_SRGB;
 

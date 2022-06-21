@@ -37,10 +37,10 @@ void VlcMediaListPlayer::SetMediaPlayer(VLC::MediaPlayer& player) {
 }
 
 void VlcMediaListPlayer::SubscribePlayerEvents() {
-  player_event_manager_->onEndReached([this]() { OnMediaPlayerReachedEnd(); });
+  player_event_manager_->onStopping([this]() { OnMediaPlayerStopping(); });
 }
 
-void VlcMediaListPlayer::OnMediaPlayerReachedEnd() {
+void VlcMediaListPlayer::OnMediaPlayerStopping() {
   if (ignore_player_events_) {
     return;
   }

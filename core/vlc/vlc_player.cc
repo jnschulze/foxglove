@@ -289,9 +289,9 @@ void VlcPlayer::SetupEventHandlers() {
 
   player_event_manager_->onPaused([this] { HandleVlcState(PlaybackState::kPaused); });
 
-  player_event_manager_->onStopped([this] { HandleVlcState(PlaybackState::kStopped); });
+  player_event_manager_->onStopping([this] { HandleVlcState(PlaybackState::kEnded); });
 
-  player_event_manager_->onEndReached([this] { HandleVlcState(PlaybackState::kEnded); });
+  player_event_manager_->onStopped([this] { HandleVlcState(PlaybackState::kStopped); });
 
   player_event_manager_->onMediaChanged(
       [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
