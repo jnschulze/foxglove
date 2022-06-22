@@ -51,12 +51,12 @@ VlcD3D11Output::~VlcD3D11Output() {
 }
 
 void VlcD3D11Output::Attach(VlcPlayer* player) {
-  Initialize();
-
-  libvlc_video_set_output_callbacks(
-      player->vlc_player(), libvlc_video_engine_d3d11, SetupCb, CleanupCb,
-      ResizeCb, UpdateOutputCb, SwapCb, StartRenderingCb, nullptr, nullptr,
-      SelectPlaneCb, this);
+  if (Initialize()) {
+    libvlc_video_set_output_callbacks(
+        player->vlc_player(), libvlc_video_engine_d3d11, SetupCb, CleanupCb,
+        ResizeCb, UpdateOutputCb, SwapCb, StartRenderingCb, nullptr, nullptr,
+        SelectPlaneCb, this);
+  }
 }
 
 void VlcD3D11Output::Shutdown() {
@@ -75,7 +75,7 @@ bool VlcD3D11Output::Initialize() {
   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
 #ifndef NDEBUG
-  creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+  //creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
   auto hr = D3D11CreateDevice(
@@ -126,6 +126,7 @@ bool VlcD3D11Output::SetupCb(void** opaque,
                              libvlc_video_setup_device_info_t* out) {
   auto self = reinterpret_cast<VlcD3D11Output*>(*opaque);
   out->d3d11.device_context = self->render_context_.d3d_context_vlc.get();
+  assert(self->render_context_.d3d_context_vlc);
   self->render_context_.d3d_context_vlc->AddRef();
   return true;
 }
