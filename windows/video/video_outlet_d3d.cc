@@ -64,13 +64,16 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
 }
 
 void VideoOutletD3d::Shutdown() {
-  const std::lock_guard<std::mutex> lock(mutex_);
+  {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    if (shutting_down_) {
+      return;
+    }
 
-  if (!shutting_down_) {
     shutting_down_ = true;
     surface_descriptor_ = {};
-    texture_registrar_->UnregisterTexture(texture_id_);
   }
+  texture_registrar_->UnregisterTexture(texture_id_);
 }
 
 VideoOutletD3d::~VideoOutletD3d() { Shutdown(); }
