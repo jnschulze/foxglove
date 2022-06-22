@@ -10,7 +10,8 @@ VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
           kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
           [this](size_t width,
                  size_t height) -> const FlutterDesktopGpuSurfaceDescriptor* {
-            if (surface_descriptor_.handle) {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            if (surface_descriptor_.handle && d3d_texture_) {
               d3d_texture_->AddRef();
             }
             return &surface_descriptor_;
@@ -20,6 +21,7 @@ VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
 }
 
 void VideoOutletD3d::Present() {
+  const std::lock_guard<std::mutex> lock(mutex_);
   if (shutting_down_) {
     return;
   }
@@ -27,6 +29,8 @@ void VideoOutletD3d::Present() {
 }
 
 void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
+  const std::lock_guard<std::mutex> lock(mutex_);
+
   d3d_texture_ = std::move(texture);
 
   if (!d3d_texture_) {
@@ -60,6 +64,8 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
 }
 
 void VideoOutletD3d::Shutdown() {
+  const std::lock_guard<std::mutex> lock(mutex_);
+
   if (!shutting_down_) {
     shutting_down_ = true;
     surface_descriptor_ = {};

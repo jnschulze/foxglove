@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "video/d3d11_output.h"
 #include "video/video_output.h"
 #include "video_outlet_base.h"
@@ -17,7 +19,8 @@ class VideoOutletD3d : public TextureOutlet, public D3D11OutputDelegate {
   virtual ~VideoOutletD3d();
 
  private:
-  std::atomic<bool> shutting_down_ = false;
+  std::mutex mutex_;
+  bool shutting_down_ = false;
   flutter::TextureRegistrar* texture_registrar_ = nullptr;
   std::unique_ptr<flutter::TextureVariant> texture_ = nullptr;
   winrt::com_ptr<ID3D11Texture2D> d3d_texture_;
