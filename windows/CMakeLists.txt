@@ -63,6 +63,11 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE
 # library. So we need to force exporting all symbols.
 #target_link_options("${PLUGIN_NAME}" PRIVATE "/WHOLEARCHIVE:foxglove_core")
 
+target_compile_options("${PLUGIN_NAME}" PRIVATE "$<$<CONFIG:Release>:/Zi>")
+target_link_options("${PLUGIN_NAME}" PRIVATE "$<$<CONFIG:Release>:/DEBUG>")
+target_link_options("${PLUGIN_NAME}" PRIVATE "$<$<CONFIG:Release>:/OPT:REF>")
+target_link_options("${PLUGIN_NAME}" PRIVATE "$<$<CONFIG:Release>:/OPT:ICF>")
+
 set(
   foxglove_bundled_libraries
   # the core library dependencies
