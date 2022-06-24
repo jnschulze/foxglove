@@ -19,7 +19,7 @@ struct VlcMediaState {
   int32_t index;
   PlaybackState playback_state;
   std::optional<int64_t> pending_seek_time;
-  //VLC::MediaPtr current_item;
+  // VLC::MediaPtr current_item;
   bool is_seekable;
 
   VlcMediaState() { Reset(); }
@@ -30,7 +30,7 @@ struct VlcMediaState {
     index = 0;
     playback_state = PlaybackState::kNone;
     pending_seek_time.reset();
-    //current_item.reset();
+    // current_item.reset();
     is_seekable = false;
   }
 };
@@ -70,7 +70,7 @@ class VlcPlayer : public Player {
   // |VideoOutputFactory|
   std::unique_ptr<VideoOutput> CreateD3D11Output(
       std::unique_ptr<D3D11OutputDelegate> output_delegate,
-      IDXGIAdapter* adapter = nullptr) const override;
+      winrt::com_ptr<IDXGIAdapter> adapter = nullptr) const override;
 #endif
 
   void SetVideoOutput(std::unique_ptr<VideoOutput> output) override;

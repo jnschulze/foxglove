@@ -39,10 +39,8 @@ static void list_dxgi_leaks() {
 namespace foxglove {
 
 VlcD3D11Output::VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,
-                               IDXGIAdapter* adapter)
-    : delegate_(std::move(delegate)) {
-  adapter_.copy_from(adapter);
-}
+                               winrt::com_ptr<IDXGIAdapter> adapter)
+    : delegate_(std::move(delegate)), adapter_(std::move(adapter)) {}
 
 VlcD3D11Output::~VlcD3D11Output() {
 #ifdef DEBUG_D3D11_LEAKS
@@ -75,7 +73,7 @@ bool VlcD3D11Output::Initialize() {
   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
 #ifndef NDEBUG
-  //creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+  // creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
   auto hr = D3D11CreateDevice(

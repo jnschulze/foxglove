@@ -27,7 +27,7 @@ class VlcPlayer;
 class VlcD3D11Output : public VlcVideoOutput {
  public:
   VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,
-                 IDXGIAdapter* adapter);
+                 winrt::com_ptr<IDXGIAdapter> adapter);
   ~VlcD3D11Output() override;
 
   void Attach(VlcPlayer* player) override;

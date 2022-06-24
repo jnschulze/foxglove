@@ -174,7 +174,7 @@ int64_t MethodChannelHandler::CreateVideoOutput(Player* player) {
   auto outlet = std::make_unique<VideoOutletD3d>(texture_registrar_);
   texture_id = outlet->texture_id();
   auto video_output =
-      player->CreateD3D11Output(std::move(outlet), graphics_adapter_.get());
+      player->CreateD3D11Output(std::move(outlet), graphics_adapter_);
   player->SetVideoOutput(std::move(video_output));
 #else
   auto outlet = std::make_unique<VideoOutlet>(texture_registrar_);

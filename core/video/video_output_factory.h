@@ -19,7 +19,7 @@ class VideoOutputFactory {
 #ifdef _WIN32
   virtual std::unique_ptr<VideoOutput> CreateD3D11Output(
       std::unique_ptr<D3D11OutputDelegate> output_delegate,
-      IDXGIAdapter* adapter = nullptr) const = 0;
+      winrt::com_ptr<IDXGIAdapter> adapter = nullptr) const = 0;
 #endif
 };
 

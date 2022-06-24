@@ -71,7 +71,7 @@ std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
 #ifdef _WIN32
 std::unique_ptr<VideoOutput> VlcPlayer::CreateD3D11Output(
     std::unique_ptr<D3D11OutputDelegate> output_delegate,
-    IDXGIAdapter* adapter) const {
+    winrt::com_ptr<IDXGIAdapter> adapter) const {
   return std::make_unique<VlcD3D11Output>(std::move(output_delegate), adapter);
 }
 #endif
@@ -283,15 +283,20 @@ void VlcPlayer::SetupEventHandlers() {
   player_event_manager_->onNothingSpecial(
       [this] { HandleVlcState(PlaybackState::kNone); });
 
-  player_event_manager_->onOpening([this] { HandleVlcState(PlaybackState::kOpening); });
+  player_event_manager_->onOpening(
+      [this] { HandleVlcState(PlaybackState::kOpening); });
 
-  player_event_manager_->onPlaying([this] { HandleVlcState(PlaybackState::kPlaying); });
+  player_event_manager_->onPlaying(
+      [this] { HandleVlcState(PlaybackState::kPlaying); });
 
-  player_event_manager_->onPaused([this] { HandleVlcState(PlaybackState::kPaused); });
+  player_event_manager_->onPaused(
+      [this] { HandleVlcState(PlaybackState::kPaused); });
 
-  player_event_manager_->onStopping([this] { HandleVlcState(PlaybackState::kEnded); });
+  player_event_manager_->onStopping(
+      [this] { HandleVlcState(PlaybackState::kEnded); });
 
-  player_event_manager_->onStopped([this] { HandleVlcState(PlaybackState::kStopped); });
+  player_event_manager_->onStopped(
+      [this] { HandleVlcState(PlaybackState::kStopped); });
 
   player_event_manager_->onMediaChanged(
       [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
@@ -389,7 +394,7 @@ void VlcPlayer::HandleMediaChanged(VLC::MediaPtr vlc_media) {
   }
 
   media_state_.index = index;
-  //media_state_.current_item = vlc_media;
+  // media_state_.current_item = vlc_media;
   media_state_.duration = vlc_media->duration();
 
   if (event_delegate_) {
