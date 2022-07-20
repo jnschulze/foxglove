@@ -5,14 +5,13 @@
 #include <vlcpp/vlc.hpp>
 
 #include "media/playlist.h"
-#include "vlc/vlc_environment.h"
 
 namespace foxglove {
 class VlcPlaylist : public Playlist {
  public:
   typedef std::function<void()> UpdateCallback;
 
-  VlcPlaylist(std::shared_ptr<VlcEnvironment> environment);
+  VlcPlaylist();
   ~VlcPlaylist() override;
 
   // |Playlist|
@@ -63,7 +62,6 @@ class VlcPlaylist : public Playlist {
 
  private:
   mutable std::mutex mutex_;
-  std::shared_ptr<VlcEnvironment> environment_;
   VLC::MediaList vlc_media_list_;
   std::vector<std::shared_ptr<Media>> media_list_;
   UpdateCallback update_callback_;
