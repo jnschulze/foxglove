@@ -18,15 +18,13 @@ void MoveItem(std::vector<t>& v, size_t oldIndex, size_t newIndex) {
 
 }  // namespace
 
-VlcPlaylist::VlcPlaylist(std::shared_ptr<VlcEnvironment> environment)
-    : environment_(environment), vlc_media_list_(VLC::MediaList()) {}
+VlcPlaylist::VlcPlaylist() : vlc_media_list_(VLC::MediaList()) {}
 
-VlcPlaylist::~VlcPlaylist() { std::cerr << "Destroy playlist " << std::endl; }
+VlcPlaylist::~VlcPlaylist() {}
 
 void VlcPlaylist::Add(std::shared_ptr<Media> media) {
   VLC::Media vlc_media =
-      VLC::Media(*environment_->vlc_instance(), media->location(),
-                 VLC::Media::FromLocation);
+      VLC::Media(media->location(), VLC::Media::FromLocation);
   {
     std::lock_guard<std::mutex> lock(mutex_);
     vlc_media_list_.lock();
@@ -58,8 +56,7 @@ void VlcPlaylist::Insert(uint32_t index, std::shared_ptr<Media> media) {
       return;
     }
     VLC::Media vlc_media =
-        VLC::Media(*environment_->vlc_instance(), media->location(),
-                   VLC::Media::FromLocation);
+        VLC::Media(media->location(), VLC::Media::FromLocation);
     vlc_media_list_.lock();
     vlc_media_list_.insertMedia(vlc_media, index);
     media_list_.insert(media_list_.begin() + index, media);
@@ -80,8 +77,7 @@ void VlcPlaylist::Move(uint32_t from, uint32_t to) {
     vlc_media_list_.lock();
     MoveItem(media_list_, from, to);
     VLC::Media vlc_media =
-        VLC::Media(*environment_->vlc_instance(),
-                   vlc_media_list_.itemAtIndex(from).get()->mrl(),
+        VLC::Media(vlc_media_list_.itemAtIndex(from).get()->mrl(),
                    VLC::Media::FromLocation);
     vlc_media_list_.removeIndex(from);
     vlc_media_list_.insertMedia(vlc_media, to);

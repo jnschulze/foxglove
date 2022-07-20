@@ -92,11 +92,11 @@ void VlcPlayer::SetVideoOutput(std::unique_ptr<VideoOutput> video_output) {
 }
 
 std::unique_ptr<Playlist> VlcPlayer::CreatePlaylist() {
-  return std::make_unique<VlcPlaylist>(environment_);
+  return std::make_unique<VlcPlaylist>();
 }
 
 void VlcPlayer::Open(std::unique_ptr<Media> media) {
-  auto playlist = std::make_unique<VlcPlaylist>(environment_);
+  auto playlist = std::make_unique<VlcPlaylist>();
   playlist->Add(std::move(media));
 
   {
