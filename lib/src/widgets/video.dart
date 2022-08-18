@@ -26,14 +26,6 @@ extension ImageExtensions on VideoFrame {
 class Video extends StatefulWidget {
   final Player player;
 
-  /// Width of the viewport.
-  /// Defaults to the width of the parent.
-  final double? width;
-
-  /// Height of the viewport.
-  /// Defaults to the height of the parent.
-  final double? height;
-
   /// How to inscribe the picture box into the player viewport.
   /// Defaults to [BoxFit.contain].
   final BoxFit fit;
@@ -56,8 +48,6 @@ class Video extends StatefulWidget {
 
   const Video({
     required this.player,
-    this.width,
-    this.height,
     this.fit = BoxFit.contain,
     this.alignment = Alignment.center,
     this.scale = 1.0,
@@ -84,14 +74,11 @@ abstract class _VideoStateBase extends State<Video> {
   @override
   Widget build(BuildContext context) {
     final player = buildPlayer();
-    return SizedBox(
-        width: widget.width ?? double.infinity,
-        height: widget.height ?? double.infinity,
-        child: widget.backgroundColor != null
-            ? DecoratedBox(
-                decoration: BoxDecoration(color: widget.backgroundColor),
-                child: player)
-            : player);
+    return widget.backgroundColor != null
+        ? DecoratedBox(
+            decoration: BoxDecoration(color: widget.backgroundColor),
+            child: player)
+        : player;
   }
 
   Widget buildPlayer();
