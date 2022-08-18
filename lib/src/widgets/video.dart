@@ -117,6 +117,9 @@ class _VideoStateTexture extends _VideoStateBase {
 
   @override
   Widget buildPlayer() {
+    if (_videoWidth == 0 || _videoHeight == 0) {
+      return const SizedBox();
+    }
     return FittedBox(
         alignment: widget.alignment,
         clipBehavior: Clip.hardEdge,
