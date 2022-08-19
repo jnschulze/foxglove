@@ -72,13 +72,16 @@ void VlcMediaListPlayer::SetPlaylistMode(PlaylistMode playlist_mode) {
 
 void VlcMediaListPlayer::PlayItemAtIndex(int index) {
   std::lock_guard<std::mutex> lock(mutex_);
-  assert(HasPlaylist());
-  PlayItemAtIndexInternal(index);
+  if (HasPlaylist()) {
+    PlayItemAtIndexInternal(index);
+  }
 }
 
 void VlcMediaListPlayer::Play() {
   std::lock_guard<std::mutex> lock(mutex_);
-  assert(HasPlaylist());
+  if(!HasPlaylist()) {
+    return;
+  }
   ignore_player_events_ = false;
   if (!current_index_.has_value()) {
     PlayItemAtIndexInternal(0);
@@ -109,13 +112,17 @@ bool VlcMediaListPlayer::StopAsync() {
 
 void VlcMediaListPlayer::Next() {
   std::lock_guard<std::mutex> lock(mutex_);
-  assert(HasPlaylist());
+  if(!HasPlaylist()) {
+    return;
+  }
   PlayItemAtRelativePosition(1, true);
 }
 
 void VlcMediaListPlayer::Previous() {
   std::lock_guard<std::mutex> lock(mutex_);
-  assert(HasPlaylist());
+  if(!HasPlaylist()) {
+    return;
+  }
   PlayItemAtRelativePosition(-1, true);
 }
 

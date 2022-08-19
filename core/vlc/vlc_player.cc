@@ -264,7 +264,7 @@ void VlcPlayer::SetMute(bool flag) {
   SafeInvoke([this, flag]() { media_player_.setMute(flag); });
 }
 
-int64_t VlcPlayer::duration() { return media_state_.duration; }
+int64_t VlcPlayer::duration() { return media_state_.duration.value_or(0); }
 
 void VlcPlayer::SafeInvoke(VoidCallback callback) {
   std::lock_guard<std::mutex> lock(op_mutex_);
@@ -301,6 +301,8 @@ void VlcPlayer::SetupEventHandlers() {
   player_event_manager_->onMediaChanged(
       [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
 
+  player_event_manager_->onLengthChanged(
+      [this](int64_t length) { HandleLengthChanged(length); });
   // player_event_manager_->onLengthChanged([this](int64_t length) {
   //   // std::cerr << "length changed " << length << std::endl;
   // });
@@ -395,16 +397,18 @@ void VlcPlayer::HandleMediaChanged(VLC::MediaPtr vlc_media) {
 
   media_state_.index = index;
   // media_state_.current_item = vlc_media;
-  media_state_.duration = vlc_media->duration();
 
-  if (event_delegate_) {
-    auto media = playlist->GetItem(media_state_.index);
-    if (media) {
-      auto media_info = std::make_unique<MediaInfo>(vlc_media->duration());
-      event_delegate_->OnMediaChanged(media.get(), std::move(media_info),
-                                      index);
-    }
+  media_state_.duration.reset();
+  auto duration = vlc_media->duration();
+  if (duration != -1) {
+    media_state_.duration = duration;
   }
+}
+
+void VlcPlayer::HandleLengthChanged(int64_t length) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  media_state_.duration = length;
+  NotifyMediaChanged();
 }
 
 void VlcPlayer::HandlePositionChanged(float position) {
@@ -423,6 +427,18 @@ void VlcPlayer::NotifyStateChanged() {
   if (event_delegate_) {
     event_delegate_->OnPlaybackStateChanged(media_state_.playback_state,
                                             media_state_.is_seekable);
+  }
+}
+
+void VlcPlayer::NotifyMediaChanged() {
+  auto playlist = media_list_player_->playlist();
+  if (playlist && event_delegate_) {
+    auto media = playlist->GetItem(media_state_.index);
+    if (media) {
+      auto media_info = std::make_unique<MediaInfo>(duration());
+      event_delegate_->OnMediaChanged(media.get(), std::move(media_info),
+                                      media_state_.index);
+    }
   }
 }
 

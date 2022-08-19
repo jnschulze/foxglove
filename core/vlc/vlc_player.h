@@ -14,7 +14,7 @@
 namespace foxglove {
 
 struct VlcMediaState {
-  int64_t duration;
+  std::optional<int64_t> duration;
   double position;
   int32_t index;
   PlaybackState playback_state;
@@ -25,7 +25,7 @@ struct VlcMediaState {
   VlcMediaState() { Reset(); }
 
   void Reset() {
-    duration = 0;
+    duration.reset();
     position = 0;
     index = 0;
     playback_state = PlaybackState::kNone;
@@ -134,9 +134,11 @@ class VlcPlayer : public Player {
   void SetupEventHandlers();
   void HandleVlcState(PlaybackState state);
   void HandleMediaChanged(VLC::MediaPtr vlc_media_ptr);
+  void HandleLengthChanged(int64_t length);
   void HandlePositionChanged(float relative_position);
   void HandleSeekableChanged(bool is_seekable);
   void NotifyStateChanged();
+  void NotifyMediaChanged();
   void Subscribe(VLC::EventManager::RegisteredEvent ev);
 };
 
