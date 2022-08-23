@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "video/d3d11_output.h"
 #include "vlc/vlc_video_output.h"
 #include "vlcpp/vlc.hpp"
@@ -46,6 +48,7 @@ class VlcD3D11Output : public VlcVideoOutput {
 
  private:
   winrt::com_ptr<IDXGIAdapter> adapter_;
+  std::mutex render_context_mutex_;
   vlc::RenderContext render_context_;
 
   std::unique_ptr<D3D11OutputDelegate> delegate_;

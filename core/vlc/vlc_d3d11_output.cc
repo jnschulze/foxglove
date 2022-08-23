@@ -43,6 +43,8 @@ VlcD3D11Output::VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,
     : delegate_(std::move(delegate)), adapter_(std::move(adapter)) {}
 
 VlcD3D11Output::~VlcD3D11Output() {
+  const std::lock_guard<std::mutex> lock(render_context_mutex_);
+
 #ifdef DEBUG_D3D11_LEAKS
   list_dxgi_leaks();
 #endif
@@ -67,6 +69,8 @@ void VlcD3D11Output::Shutdown() {
 }
 
 bool VlcD3D11Output::Initialize() {
+  const std::lock_guard<std::mutex> lock(render_context_mutex_);
+
   auto render_context = &render_context_;
   IDXGIAdapter* preferred_adapter = adapter_.get();
 
@@ -123,6 +127,9 @@ bool VlcD3D11Output::SetupCb(void** opaque,
                              const libvlc_video_setup_device_cfg_t* cfg,
                              libvlc_video_setup_device_info_t* out) {
   auto self = reinterpret_cast<VlcD3D11Output*>(*opaque);
+
+  const std::lock_guard<std::mutex> lock(self->render_context_mutex_);
+
   out->d3d11.device_context = self->render_context_.d3d_context_vlc.get();
   assert(self->render_context_.d3d_context_vlc);
   self->render_context_.d3d_context_vlc->AddRef();
@@ -131,6 +138,7 @@ bool VlcD3D11Output::SetupCb(void** opaque,
 
 void VlcD3D11Output::CleanupCb(void* opaque) {
   auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
+  const std::lock_guard<std::mutex> lock(self->render_context_mutex_);
   self->render_context_.d3d_context_vlc->Release();
 }
 
@@ -153,6 +161,9 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   const DXGI_FORMAT kRenderFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
   auto self = reinterpret_cast<VlcD3D11Output*>(opaque);
+
+  const std::lock_guard<std::mutex> lock(self->render_context_mutex_);
+
   auto render_context = &self->render_context_;
 
   ReleaseTextures(render_context);
@@ -242,9 +253,13 @@ bool VlcD3D11Output::SelectPlaneCb(void* opaque, size_t plane, void* out) {
     return false;
   }
 
-  // we don't really need to return it as we already do the
-  // OMSetRenderTargets().
-  *output = self->render_context_.texture_render_target.get();
+  {
+    const std::lock_guard<std::mutex> lock(self->render_context_mutex_);
+    // we don't really need to return it as we already do the
+    // OMSetRenderTargets().
+    *output = self->render_context_.texture_render_target.get();
+  }
+
   return true;
 }
 
