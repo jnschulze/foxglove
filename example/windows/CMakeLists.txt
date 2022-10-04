@@ -3,9 +3,6 @@ project(foxglove_example LANGUAGES CXX)
 
 set(BINARY_NAME "foxglove_example")
 
-set(FOXGLOVE_USE_D3D_TEXTURE ON)
-set(FOXGLOVE_USE_EXPERIMENTAL_ENGINE_FEATURES ON)
-
 cmake_policy(SET CMP0063 NEW)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")

@@ -96,12 +96,9 @@ enum Events : int32_t {
 }  // namespace
 
 PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
-                           FlutterTaskRunner* platform_task_runner,
                            std::shared_ptr<TaskQueue> task_queue,
                            Player* player)
-    : player_(player),
-      platform_task_runner_(platform_task_runner),
-      task_queue_(std::move(task_queue)) {
+    : player_(player), task_queue_(std::move(task_queue)) {
   auto method_channel_name = string_format("foxglove/%I64i", player->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -318,82 +315,68 @@ void PlayerBridge::OnMediaChanged(const Media* media,
   auto duration = media_info->duration();
   auto type = media->media_type();
   auto resource = media->resource();
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(
-        flutter::EncodableMap{{kEventType, Events::kMediaChanged},
-                              {"media",
-                               flutter::EncodableMap{
-                                   {"type", type},
-                                   {"resource", resource},
-                               }},
-                              {"duration", duration},
-                              {"index", static_cast<int32_t>(index)}});
-    EmitEvent(event);
-  });
+  const auto event = flutter::EncodableValue(
+      flutter::EncodableMap{{kEventType, Events::kMediaChanged},
+                            {"media",
+                             flutter::EncodableMap{
+                                 {"type", type},
+                                 {"resource", resource},
+                             }},
+                            {"duration", duration},
+                            {"index", static_cast<int32_t>(index)}});
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnPlaybackStateChanged(PlaybackState state,
                                           bool is_seekable) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kPlaybackStateChanged},
-        {"state", static_cast<int32_t>(state)},
-        {"is_seekable", is_seekable},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kPlaybackStateChanged},
+      {"state", static_cast<int32_t>(state)},
+      {"is_seekable", is_seekable},
   });
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnPositionChanged(double position, int64_t duration) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kPositionChanged},
-        {"duration", duration},
-        {"position", position},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kPositionChanged},
+      {"duration", duration},
+      {"position", position},
   });
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnRateChanged(double rate) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kRateChanged},
-        {kEventValue, rate},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kRateChanged},
+      {kEventValue, rate},
   });
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnVolumeChanged(double volume) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kVolumeChanged},
-        {kEventValue, volume},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kVolumeChanged},
+      {kEventValue, volume},
   });
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnMute(bool is_muted) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kMuteChanged},
-        {kEventValue, is_muted},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kMuteChanged},
+      {kEventValue, is_muted},
   });
+  EmitEvent(event);
 }
 
 void PlayerBridge::OnVideoDimensionsChanged(int32_t width, int32_t height) {
-  platform_task_runner_->PostTask([=]() {
-    const auto event = flutter::EncodableValue(flutter::EncodableMap{
-        {kEventType, kVideoDimensionsChanged},
-        {"width", width},
-        {"height", height},
-    });
-    EmitEvent(event);
+  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+      {kEventType, kVideoDimensionsChanged},
+      {"width", width},
+      {"height", height},
   });
+  EmitEvent(event);
 }
 
 }  // namespace windows

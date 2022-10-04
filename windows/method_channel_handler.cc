@@ -4,11 +4,13 @@
 
 #include "method_channel_utils.h"
 #include "player_environment.h"
-#include "video/video_outlet.h"
+
 #include "vlc/vlc_environment.h"
 
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
 #include "video/video_outlet_d3d.h"
+#else
+#include "video/video_outlet.h"
 #endif
 
 namespace foxglove {
@@ -29,17 +31,13 @@ constexpr auto kErrorCodeInvalidId = "invalid_id";
 MethodChannelHandler::MethodChannelHandler(
     ObjectRegistry* object_registry, flutter::BinaryMessenger* binary_messenger,
     flutter::TextureRegistrar* texture_registrar,
-    winrt::com_ptr<IDXGIAdapter> graphics_adapter,
-    FlutterTaskRunner* platform_task_runner)
+    winrt::com_ptr<IDXGIAdapter> graphics_adapter)
     : registry_(object_registry),
       binary_messenger_(binary_messenger),
       texture_registrar_(texture_registrar),
       graphics_adapter_(std::move(graphics_adapter)),
-      platform_task_runner_(platform_task_runner),
       task_queue_(std::make_shared<TaskQueue>(
-          1, "io.jns.foxglove.methodchannelhandler")) {
-  assert(platform_task_runner_);
-}
+          1, "io.jns.foxglove.methodchannelhandler")) {}
 
 void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -158,7 +156,7 @@ void MethodChannelHandler::CreatePlayer(
 
     auto player = env->CreatePlayer();
     player->SetEventDelegate(std::make_unique<PlayerBridge>(
-        binary_messenger_, platform_task_runner_, task_queue_, player.get()));
+        binary_messenger_, task_queue_, player.get()));
     auto id = player->id();
     auto texture_id = CreateVideoOutput(player.get());
     registry_->players()->InsertPlayer(id, std::move(player));

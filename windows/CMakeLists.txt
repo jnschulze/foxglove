@@ -12,15 +12,19 @@ add_library(${PLUGIN_NAME} SHARED
   "foxglove_plugin.cpp"
   "method_channel_handler.cc"
   "player_bridge.cc"
-  "video/video_outlet.cc"
 )
 
+set(FOXGLOVE_USE_D3D_TEXTURE ON CACHE BOOL "Enable D3D texture interop")
 if(FOXGLOVE_USE_D3D_TEXTURE)
   target_compile_definitions("${PLUGIN_NAME}" PRIVATE
     HAVE_FLUTTER_D3D_TEXTURE
   )
   target_sources("${PLUGIN_NAME}" PRIVATE
     "video/video_outlet_d3d.cc"
+  )
+else()
+  target_sources("${PLUGIN_NAME}" PRIVATE
+    "video/video_outlet.cc"
   )
 endif()
 

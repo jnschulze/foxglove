@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include "base/task_queue.h"
-#include "flutter_task_runner.h"
 #include "globals.h"
 #include "player_bridge.h"
 
@@ -18,8 +17,7 @@ class MethodChannelHandler {
   MethodChannelHandler(ObjectRegistry* object_registry,
                        flutter::BinaryMessenger* binary_messenger,
                        flutter::TextureRegistrar* texture_registrar,
-                       winrt::com_ptr<IDXGIAdapter> graphics_adapter,
-                       FlutterTaskRunner* platform_task_runner);
+                       winrt::com_ptr<IDXGIAdapter> graphics_adapter);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -46,7 +44,6 @@ class MethodChannelHandler {
   winrt::com_ptr<IDXGIAdapter> graphics_adapter_;
   flutter::TextureRegistrar* texture_registrar_;
   flutter::BinaryMessenger* binary_messenger_;
-  FlutterTaskRunner* platform_task_runner_;
   // std::unordered_map<int64_t, std::unique_ptr<PlayerBridge>> players_;
   std::shared_ptr<TaskQueue> task_queue_;
 

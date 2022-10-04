@@ -10,7 +10,6 @@
 #include <mutex>
 
 #include "base/task_queue.h"
-#include "flutter_task_runner.h"
 #include "player.h"
 
 namespace foxglove {
@@ -19,7 +18,6 @@ namespace windows {
 class PlayerBridge : public PlayerEventDelegate {
  public:
   PlayerBridge(flutter::BinaryMessenger* messenger,
-               FlutterTaskRunner* platform_task_runner,
                std::shared_ptr<TaskQueue> task_queue, Player* player);
   ~PlayerBridge() override;
 
@@ -35,7 +33,6 @@ class PlayerBridge : public PlayerEventDelegate {
 
  private:
   Player* player_;
-  FlutterTaskRunner* platform_task_runner_;
   std::shared_ptr<TaskQueue> task_queue_;
   std::mutex event_sink_mutex_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
