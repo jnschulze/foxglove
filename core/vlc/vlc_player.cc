@@ -217,11 +217,11 @@ void VlcPlayer::SeekTime(int64_t time) {
     auto state = media_state_.playback_state;
     switch (state) {
       case PlaybackState::kPlaying:
+      case PlaybackState::kPaused:
         media_player_.setTime(time, false);
       case PlaybackState::kNone:
       case PlaybackState::kOpening:
       case PlaybackState::kBuffering:
-      case PlaybackState::kPaused:
       case PlaybackState::kStopped:
       case PlaybackState::kEnded:
         media_state_.pending_seek_time = time;
