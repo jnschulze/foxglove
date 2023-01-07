@@ -21,6 +21,8 @@ struct VlcMediaState {
   std::optional<int64_t> pending_seek_time;
   // VLC::MediaPtr current_item;
   bool is_seekable;
+  bool is_mute;
+  float volume;
 
   VlcMediaState() { Reset(); }
 
@@ -32,6 +34,8 @@ struct VlcMediaState {
     pending_seek_time.reset();
     // current_item.reset();
     is_seekable = false;
+    is_mute = false;
+    volume = 0;
   }
 };
 
@@ -132,13 +136,17 @@ class VlcPlayer : public Player {
   void SafeInvoke(VoidCallback callback);
 
   void SetupEventHandlers();
+  void OnPlay();
   void HandleVlcState(PlaybackState state);
   void HandleMediaChanged(VLC::MediaPtr vlc_media_ptr);
   void HandleLengthChanged(int64_t length);
   void HandlePositionChanged(float relative_position);
   void HandleSeekableChanged(bool is_seekable);
+  void HandleMuteChanged(bool is_mute);
+  void HandleVolumeChanged(float volume);
   void NotifyStateChanged();
   void NotifyMediaChanged();
+  void NotifyPositionChanged();
   void Subscribe(VLC::EventManager::RegisteredEvent ev);
 };
 

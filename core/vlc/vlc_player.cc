@@ -126,7 +126,7 @@ void VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
 
   // StopSyncInternal();
   StopInternal();
-  media_state_.Reset();
+  // media_state_.Reset();
   state_.is_playlist = is_playlist;
 
   playlist->OnUpdate([this]() { OnPlaylistUpdated(); });
@@ -217,8 +217,16 @@ void VlcPlayer::SeekTime(int64_t time) {
     auto state = media_state_.playback_state;
     switch (state) {
       case PlaybackState::kPlaying:
-      case PlaybackState::kPaused:
+      case PlaybackState::kPaused: {
         media_player_.setTime(time, false);
+        // VLC doesn't update it's position when paused.
+        // So just update the state's position directly.
+        auto length = duration();
+        if (length != 0) {
+          media_state_.position = time / static_cast<double>(length);
+          NotifyPositionChanged();
+        }
+      } break;
       case PlaybackState::kNone:
       case PlaybackState::kOpening:
       case PlaybackState::kBuffering:
@@ -313,23 +321,11 @@ void VlcPlayer::SetupEventHandlers() {
   player_event_manager_->onSeekableChanged(
       [this](bool is_seekable) { HandleSeekableChanged(is_seekable); });
 
-  player_event_manager_->onAudioVolume([this](float value) {
-    if (event_delegate_) {
-      event_delegate_->OnVolumeChanged(value);
-    }
-  });
+  player_event_manager_->onAudioVolume(
+      [this](float value) { HandleVolumeChanged(value); });
 
-  player_event_manager_->onMuted([this]() {
-    if (event_delegate_) {
-      event_delegate_->OnMute(true);
-    }
-  });
-
-  player_event_manager_->onUnmuted([this]() {
-    if (event_delegate_) {
-      event_delegate_->OnMute(false);
-    }
-  });
+  player_event_manager_->onMuted([this]() { HandleMuteChanged(true); });
+  player_event_manager_->onUnmuted([this]() { HandleMuteChanged(false); });
 }
 
 void VlcPlayer::HandleVlcState(PlaybackState state) {
@@ -361,9 +357,11 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
       media_state_.playback_state = state;
       switch (state) {
         case PlaybackState::kStopped:
-          // case PlaybackState::kEnded:
+          media_state_.position = 0;
           std::cerr << "Video stopped" << std::endl;
-          // state_.Reset();
+          break;
+        case PlaybackState::kEnded:
+          media_state_.position = 0;
           break;
         default:
           break;
@@ -378,48 +376,85 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
   }
 
   if (has_change) {
+    if (state == PlaybackState::kPlaying) {
+      OnPlay();
+    }
     NotifyStateChanged();
+    NotifyPositionChanged();
+  }
+}
+
+void VlcPlayer::OnPlay() {
+  // Ensure media_state_ is in sync with the actual state.
+  HandleMuteChanged(media_player_.mute());
+  HandleVolumeChanged(media_player_.volume() / 100.0);
+}
+
+void VlcPlayer::HandleMuteChanged(bool is_mute) {
+  if (media_state_.is_mute != is_mute) {
+    media_state_.is_mute = is_mute;
+    if (event_delegate_) {
+      event_delegate_->OnMute(media_state_.is_mute);
+    }
+  }
+}
+
+void VlcPlayer::HandleVolumeChanged(float volume) {
+  if (volume != media_state_.volume) {
+    media_state_.volume = volume;
+    if (event_delegate_) {
+      event_delegate_->OnVolumeChanged(volume);
+    }
   }
 }
 
 void VlcPlayer::HandleMediaChanged(VLC::MediaPtr vlc_media) {
-  std::lock_guard<std::mutex> lock(state_mutex_);
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
 
-  if (!IsValid()) {
-    return;
+    if (!IsValid()) {
+      return;
+    }
+
+    auto playlist = media_list_player_->playlist();
+    auto index = playlist->vlc_media_list().indexOfItem(*vlc_media.get());
+    if (index == -1) {
+      return;
+    }
+
+    media_state_.index = index;
+    // media_state_.current_item = vlc_media;
+
+    media_state_.duration.reset();
+    media_state_.position = 0;
+    auto duration = vlc_media->duration();
+    if (duration != -1) {
+      media_state_.duration = duration;
+    }
   }
-
-  auto playlist = media_list_player_->playlist();
-  auto index = playlist->vlc_media_list().indexOfItem(*vlc_media.get());
-  if (index == -1) {
-    return;
-  }
-
-  media_state_.index = index;
-  // media_state_.current_item = vlc_media;
-
-  media_state_.duration.reset();
-  auto duration = vlc_media->duration();
-  if (duration != -1) {
-    media_state_.duration = duration;
-  }
+  NotifyPositionChanged();
 }
 
 void VlcPlayer::HandleLengthChanged(int64_t length) {
-  std::lock_guard<std::mutex> lock(state_mutex_);
-  media_state_.duration = length;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    media_state_.duration = length;
+  }
   NotifyMediaChanged();
+  NotifyPositionChanged();
 }
 
 void VlcPlayer::HandlePositionChanged(float position) {
   double pos = std::clamp(static_cast<double>(position), 0.0, 1.0);
-  if (event_delegate_) {
-    event_delegate_->OnPositionChanged(pos, duration());
-  }
+  media_state_.position = pos;
+  NotifyPositionChanged();
 }
 
 void VlcPlayer::HandleSeekableChanged(bool is_seekable) {
-  media_state_.is_seekable = is_seekable;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    media_state_.is_seekable = is_seekable;
+  }
   NotifyStateChanged();
 }
 
@@ -427,6 +462,12 @@ void VlcPlayer::NotifyStateChanged() {
   if (event_delegate_) {
     event_delegate_->OnPlaybackStateChanged(media_state_.playback_state,
                                             media_state_.is_seekable);
+  }
+}
+
+void VlcPlayer::NotifyPositionChanged() {
+  if (event_delegate_) {
+    event_delegate_->OnPositionChanged(media_state_.position, duration());
   }
 }
 
