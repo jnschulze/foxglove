@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "video/pixel_buffer_output.h"
 #include "vlc/vlc_video_output.h"
 
