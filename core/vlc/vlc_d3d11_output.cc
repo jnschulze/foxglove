@@ -116,13 +116,6 @@ bool VlcD3D11Output::Initialize() {
   return true;
 }
 
-void VlcD3D11Output::SetDimensions(VideoDimensions& dimensions) {
-  if (current_dimensions_ != dimensions) {
-    current_dimensions_ = dimensions;
-    dimensions_changed_(dimensions);
-  }
-}
-
 bool VlcD3D11Output::SetupCb(void** opaque,
                              const libvlc_video_setup_device_cfg_t* cfg,
                              libvlc_video_setup_device_info_t* out) {

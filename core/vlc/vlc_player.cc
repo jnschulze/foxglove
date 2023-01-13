@@ -387,7 +387,7 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
 void VlcPlayer::OnPlay() {
   // Ensure media_state_ is in sync with the actual state.
   HandleMuteChanged(media_player_.mute());
-  HandleVolumeChanged(media_player_.volume() / 100.0);
+  HandleVolumeChanged(media_player_.volume() / 100.0f);
 }
 
 void VlcPlayer::HandleMuteChanged(bool is_mute) {
@@ -400,6 +400,7 @@ void VlcPlayer::HandleMuteChanged(bool is_mute) {
 }
 
 void VlcPlayer::HandleVolumeChanged(float volume) {
+  volume = std::clamp(volume, 0.0f, 1.0f);
   if (volume != media_state_.volume) {
     media_state_.volume = volume;
     if (event_delegate_) {

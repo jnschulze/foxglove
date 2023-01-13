@@ -48,9 +48,7 @@ void VlcPixelBufferOutput::Attach(VlcPlayer* player) {
       });
 }
 
-void VlcPixelBufferOutput::Shutdown() {
-  delegate_->Shutdown();
-}
+void VlcPixelBufferOutput::Shutdown() { delegate_->Shutdown(); }
 
 unsigned VlcPixelBufferOutput::Setup(char* chroma, unsigned* width,
                                      unsigned* height, unsigned* pitches,
@@ -105,15 +103,6 @@ void VlcPixelBufferOutput::Cleanup() {
 
   // SendEmptyFrame();
   // SetDimensions(VideoDimensions());
-}
-
-void VlcPixelBufferOutput::SetDimensions(VideoDimensions& dimensions) {
-  if (current_dimensions_ != dimensions) {
-    current_dimensions_ = dimensions;
-    if (dimensions_changed_) {
-      dimensions_changed_(current_dimensions_);
-    }
-  }
 }
 
 void* VlcPixelBufferOutput::OnVideoLock(void** planes) {

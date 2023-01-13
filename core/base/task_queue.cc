@@ -40,16 +40,18 @@ void TaskQueue::Run() {
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
 
     task_pending_cv_.wait(
-        lock, [this]() { return done_ || pending_tasks_.size() > 0; });
+        lock, [this]() { return done_ || !pending_tasks_.empty(); });
 
     if (done_) {
       return;
     }
 
-    auto task = std::move(pending_tasks_.front());
-    pending_tasks_.pop_front();
-    lock.unlock();
-    task();
+    if (!pending_tasks_.empty()) {
+      auto task = std::move(pending_tasks_.front());
+      pending_tasks_.pop_front();
+      lock.unlock();
+      task();
+    }
   }
 }
 }  // namespace foxglove

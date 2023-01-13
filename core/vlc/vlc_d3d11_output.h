@@ -35,13 +35,6 @@ class VlcD3D11Output : public VlcVideoOutput {
   void Attach(VlcPlayer* player) override;
   void Shutdown() override;
 
-  void OnDimensionsChanged(
-      VideoDimensionsCallback dimensions_callback) override {
-    dimensions_changed_ = dimensions_callback;
-  }
-  const VideoDimensions& dimensions() const override {
-    return current_dimensions_;
-  }
   VideoOutputDelegate* output_delegate() const override {
     return delegate_.get();
   }
@@ -54,7 +47,6 @@ class VlcD3D11Output : public VlcVideoOutput {
   std::unique_ptr<D3D11OutputDelegate> delegate_;
 
   bool Initialize();
-  void SetDimensions(VideoDimensions&);
   static void ReleaseTextures(vlc::RenderContext* context);
 
   static bool SetupCb(void** opaque, const libvlc_video_setup_device_cfg_t* cfg,
@@ -70,9 +62,6 @@ class VlcD3D11Output : public VlcVideoOutput {
                                                   unsigned width,
                                                   unsigned height),
                        void* report_opaque);
-
-  VideoDimensions current_dimensions_{};
-  VideoDimensionsCallback dimensions_changed_;
 };
 
 }  // namespace foxglove

@@ -47,6 +47,7 @@ class VlcPlaylist : public Playlist {
   }
 
   void OnUpdate(UpdateCallback update_callback) {
+    const std::lock_guard<std::mutex> lock(update_callback_mutex_);
     update_callback_ = std::move(update_callback);
   }
 
@@ -62,11 +63,13 @@ class VlcPlaylist : public Playlist {
 
  private:
   mutable std::mutex mutex_;
+  std::mutex update_callback_mutex_;
   VLC::MediaList vlc_media_list_;
   std::vector<std::shared_ptr<Media>> media_list_;
   UpdateCallback update_callback_;
 
   void NotifyUpdate() {
+    const std::lock_guard<std::mutex> lock(update_callback_mutex_);
     if (update_callback_) {
       update_callback_();
     }
