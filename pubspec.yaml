@@ -20,4 +20,4 @@ flutter:
   plugin:
     platforms:
       windows:
-        pluginClass: FoxglovePlugin
+        pluginClass: FoxglovePluginCApi

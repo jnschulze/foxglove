@@ -4,7 +4,7 @@
 
 #include "method_channel_utils.h"
 #include "player_environment.h"
-
+#include "plugin_state.h"
 #include "vlc/vlc_environment.h"
 
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
@@ -42,6 +42,11 @@ MethodChannelHandler::MethodChannelHandler(
 void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  if (!PluginState::IsValid()) {
+    result->Error("plugin_terminating");
+    return;
+  }
+
   const auto& method_name = method_call.method_name();
 
   if (method_name.compare(kMethodInitPlatform) == 0) {

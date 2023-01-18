@@ -41,7 +41,7 @@ struct FrameBuffer {
 };
 
 VideoOutlet::VideoOutlet(flutter::TextureRegistrar* texture_registrar)
-    : texture_registrar_(texture_registrar) {
+    : TextureOutlet(texture_registrar) {
   texture_ =
       std::make_unique<flutter::TextureVariant>(flutter::PixelBufferTexture(
           [=](size_t width, size_t height) -> const FlutterDesktopPixelBuffer* {
@@ -56,7 +56,7 @@ const FlutterDesktopPixelBuffer* VideoOutlet::CopyPixelBuffer(size_t width,
   // once Flutter has uploaded the buffer to the GPU.
   buffer_mutex_.lock();
 
-  if (!shutting_down_ && current_buffer_) {
+  if (valid() && current_buffer_) {
     return current_buffer_->flutter_buffer();
   }
 
@@ -100,23 +100,14 @@ void VideoOutlet::UnlockBuffer(void* user_data) { buffer_mutex_.unlock(); }
 
 void VideoOutlet::PresentBuffer(const VideoDimensions& dimensions,
                                 void* user_data) {
-  if (shutting_down_) {
-    return;
+  if (valid()) {
+    texture_registrar_->MarkTextureFrameAvailable(texture_id_);
   }
-
-  texture_registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
-void VideoOutlet::Shutdown() {
-  shutting_down_ = true;
-  texture_registrar_->UnregisterTexture(texture_id_);
-}
+void VideoOutlet::Shutdown() { Unregister(); }
 
-VideoOutlet::~VideoOutlet() {
-  // Acquire buffer mutex to ensure that the buffer is not in use by Flutter
-  // anymore.
-  const std::lock_guard<std::mutex> lock(buffer_mutex_);
-}
+VideoOutlet::~VideoOutlet() { Unregister(); }
 
 }  // namespace windows
 

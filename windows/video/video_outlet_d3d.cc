@@ -4,17 +4,13 @@ namespace foxglove {
 namespace windows {
 
 VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
-    : texture_registrar_(texture_registrar) {
+    : TextureOutlet(texture_registrar) {
   texture_ =
       std::make_unique<flutter::TextureVariant>(flutter::GpuSurfaceTexture(
           kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
           [this](size_t width,
                  size_t height) -> const FlutterDesktopGpuSurfaceDescriptor* {
-            const std::lock_guard<std::mutex> lock(mutex_);
-            if (surface_descriptor_.handle && d3d_texture_) {
-              d3d_texture_->AddRef();
-            }
-            return &surface_descriptor_;
+            return surface_descriptor();
           }));
 
   texture_id_ = texture_registrar_->RegisterTexture(texture_.get());
@@ -22,14 +18,16 @@ VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
 
 void VideoOutletD3d::Present() {
   const std::lock_guard<std::mutex> lock(mutex_);
-  if (shutting_down_) {
-    return;
+  if (valid()) {
+    texture_registrar_->MarkTextureFrameAvailable(texture_id_);
   }
-  texture_registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
 void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   const std::lock_guard<std::mutex> lock(mutex_);
+  if (!valid()) {
+    return;
+  }
 
   d3d_texture_ = std::move(texture);
 
@@ -63,20 +61,20 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   surface_descriptor_.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
 }
 
-void VideoOutletD3d::Shutdown() {
-  {
-    const std::lock_guard<std::mutex> lock(mutex_);
-    if (shutting_down_) {
-      return;
+const FlutterDesktopGpuSurfaceDescriptor* VideoOutletD3d::surface_descriptor() {
+  const std::lock_guard<std::mutex> lock(mutex_);
+  if (valid()) {
+    if (surface_descriptor_.handle && d3d_texture_) {
+      d3d_texture_->AddRef();
     }
-
-    shutting_down_ = true;
-    surface_descriptor_ = {};
+    return &surface_descriptor_;
   }
-  texture_registrar_->UnregisterTexture(texture_id_);
+  return nullptr;
 }
 
-VideoOutletD3d::~VideoOutletD3d() { Shutdown(); }
+void VideoOutletD3d::Shutdown() { Unregister(); }
+
+VideoOutletD3d::~VideoOutletD3d() { Unregister(); }
 
 }  // namespace windows
 }  // namespace foxglove

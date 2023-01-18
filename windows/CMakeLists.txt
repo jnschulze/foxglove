@@ -9,9 +9,13 @@ add_subdirectory(../core "${CMAKE_BINARY_DIR}/${PROJECT_NAME}_core")
 set(PLUGIN_NAME "foxglove_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
-  "foxglove_plugin.cpp"
+  "include/foxglove/foxglove_plugin_c_api.h"
+  "foxglove_plugin.h"
+  "foxglove_plugin_c_api.cc"
+  "foxglove_plugin.cc"
   "method_channel_handler.cc"
   "player_bridge.cc"
+  "video/video_outlet_base.cc"
 )
 
 set(FOXGLOVE_USE_D3D_TEXTURE ON CACHE BOOL "Enable D3D texture interop")

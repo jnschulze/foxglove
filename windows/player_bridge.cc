@@ -7,6 +7,7 @@
 
 #include "media/media.h"
 #include "method_channel_utils.h"
+#include "plugin_state.h"
 
 namespace foxglove {
 namespace windows {
@@ -133,13 +134,22 @@ PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
 }
 
 PlayerBridge::~PlayerBridge() {
-  method_channel_->SetMethodCallHandler(nullptr);
-  event_channel_->SetStreamHandler(nullptr);
+  // Channels handlers must not be unset during plugin destruction
+  // See https://github.com/flutter/flutter/issues/118611
+  if (PluginState::IsValid()) {
+    method_channel_->SetMethodCallHandler(nullptr);
+    event_channel_->SetStreamHandler(nullptr);
+  }
 }
 
 void PlayerBridge::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  if (!PluginState::IsValid()) {
+    result->Error("plugin_terminating");
+    return;
+  }
+
   const auto& method_name = method_call.method_name();
 
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
@@ -303,9 +313,11 @@ void PlayerBridge::HandleMethodCall(
 }
 
 void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
-  const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-  if (event_sink_) {
-    event_sink_->Success(event);
+  if (PluginState::IsValid()) {
+    const std::lock_guard<std::mutex> lock(event_sink_mutex_);
+    if (event_sink_) {
+      event_sink_->Success(event);
+    }
   }
 }
 
