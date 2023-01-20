@@ -19,6 +19,10 @@ class FoxglovePlugin : public flutter::Plugin {
 
   virtual ~FoxglovePlugin();
 
+  // Disallow copy and assign.
+  FoxglovePlugin(const FoxglovePlugin&) = delete;
+  FoxglovePlugin& operator=(const FoxglovePlugin&) = delete;
+
  private:
   std::unique_ptr<MethodChannelHandler> method_channel_handler_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
