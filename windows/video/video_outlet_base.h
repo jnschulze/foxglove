@@ -19,7 +19,14 @@ class TextureOutlet {
   flutter::TextureRegistrar* texture_registrar_ = nullptr;
   TextureOutlet(flutter::TextureRegistrar* texture_registrar);
   inline bool valid() const { return !is_unregistering_; }
+
+  // Unregisters a texture and synchronously waits for its completion.
+  //
+  // Note:
+  // This function synchronously waits for a callback that gets invoked from the Flutter raster thread.
+  // Be careful to avoid deadlocks.
   void UnregisterTexture(int64_t texture_id);
+
   void Unregister();
 };
 

@@ -25,14 +25,14 @@ void VideoOutletD3d::Present() {
 
 void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   const std::lock_guard<std::mutex> lock(mutex_);
-  if (!valid()) {
-    return;
-  }
-
   d3d_texture_ = std::move(texture);
 
   if (!d3d_texture_) {
     surface_descriptor_ = {};
+    return;
+  }
+
+  if (!valid()) {
     return;
   }
 
