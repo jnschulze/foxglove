@@ -11,6 +11,7 @@
 
 #include "base/task_queue.h"
 #include "player.h"
+#include "plugin_state.h"
 
 namespace foxglove {
 namespace windows {
@@ -31,6 +32,9 @@ class PlayerBridge : public PlayerEventDelegate {
   void OnMute(bool is_muted) override;
   void OnVideoDimensionsChanged(int32_t width, int32_t height) override;
 
+  inline bool IsValid() const { return !task_queue_->terminated(); }
+  inline bool IsMessengerValid() const { return PluginState::IsValid(); }
+
  private:
   Player* player_;
   std::shared_ptr<TaskQueue> task_queue_;
@@ -46,6 +50,12 @@ class PlayerBridge : public PlayerEventDelegate {
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   void EmitEvent(const flutter::EncodableValue& event);
+
+  typedef std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+      MethodResult;
+  void Enqueue(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                   method_result,
+               std::function<void(MethodResult result)> handler);
 };
 
 }  // namespace windows

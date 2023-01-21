@@ -17,14 +17,17 @@ TaskQueue::TaskQueue(size_t num_threads, std::optional<std::string> thread_name)
 }
 
 TaskQueue::~TaskQueue() {
-  done_ = true;
-  task_pending_cv_.notify_all();
-
+  Terminate();
   for (auto& t : workers_) {
     if (t.joinable()) {
       t.join();
     }
   }
+}
+
+void TaskQueue::Terminate() {
+  terminated_ = true;
+  task_pending_cv_.notify_all();
 }
 
 void TaskQueue::Run() {
@@ -40,9 +43,9 @@ void TaskQueue::Run() {
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
 
     task_pending_cv_.wait(
-        lock, [this]() { return done_ || !pending_tasks_.empty(); });
+        lock, [this]() { return terminated_ || !pending_tasks_.empty(); });
 
-    if (done_) {
+    if (terminated_) {
       return;
     }
 

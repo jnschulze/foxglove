@@ -1,7 +1,6 @@
 #include "vlc/vlc_media_list_player.h"
 
 #include <cassert>
-#include <iostream>
 
 namespace foxglove {
 
@@ -79,7 +78,7 @@ void VlcMediaListPlayer::PlayItemAtIndex(int index) {
 
 void VlcMediaListPlayer::Play() {
   std::lock_guard<std::mutex> lock(mutex_);
-  if(!HasPlaylist()) {
+  if (!HasPlaylist()) {
     return;
   }
   ignore_player_events_ = false;
@@ -112,7 +111,7 @@ bool VlcMediaListPlayer::StopAsync() {
 
 void VlcMediaListPlayer::Next() {
   std::lock_guard<std::mutex> lock(mutex_);
-  if(!HasPlaylist()) {
+  if (!HasPlaylist()) {
     return;
   }
   PlayItemAtRelativePosition(1, true);
@@ -120,7 +119,7 @@ void VlcMediaListPlayer::Next() {
 
 void VlcMediaListPlayer::Previous() {
   std::lock_guard<std::mutex> lock(mutex_);
-  if(!HasPlaylist()) {
+  if (!HasPlaylist()) {
     return;
   }
   PlayItemAtRelativePosition(-1, true);

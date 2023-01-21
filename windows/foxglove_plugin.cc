@@ -1,9 +1,7 @@
 #include "foxglove_plugin.h"
 
-#include <iostream>
 #include <sstream>
 
-#include "globals.h"
 #include "plugin_state.h"
 
 namespace foxglove {
@@ -32,8 +30,8 @@ FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
 
   method_channel_handler_ =
       std::make_unique<foxglove::windows::MethodChannelHandler>(
-          foxglove::g_registry.get(), binary_messenger, texture_registrar,
-          std::move(graphics_adapter));
+          std::make_unique<PlayerResourceRegistry>(), binary_messenger,
+          texture_registrar, std::move(graphics_adapter));
 
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -51,8 +49,7 @@ FoxglovePlugin::~FoxglovePlugin() {
   // method_channel_->SetMethodCallHandler(nullptr);
   PluginState::SetIsTerminating();
 
-  foxglove::g_registry->players()->Clear();
-  foxglove::g_registry->environments()->Clear();
+  method_channel_handler_->Terminate();
 }
 
 }  // namespace windows

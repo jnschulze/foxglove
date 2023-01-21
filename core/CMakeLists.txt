@@ -70,7 +70,6 @@ endif()
 
 add_library(${LIBRARY_NAME} STATIC
   events.cc
-  globals.cc
   base/task_queue.cc
   vlc/vlc_environment.cc
   vlc/vlc_media_list_player.cc

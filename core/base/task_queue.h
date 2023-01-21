@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <functional>
@@ -17,24 +18,34 @@ class TaskQueue {
   TaskQueue(size_t num_threads,
             std::optional<std::string> thread_name = std::nullopt);
   ~TaskQueue();
+  void Terminate();
+  inline bool terminated() const { return terminated_; }
 
   template <typename F>
-  void Enqueue(F&& task) {
+  bool Enqueue(F&& task) {
+    if (terminated_) {
+      return false;
+    }
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
     pending_tasks_.emplace_back(std::forward<F>(task));
     lock.unlock();
     task_pending_cv_.notify_one();
+    return true;
   }
 
-  void Enqueue(Task task) {
+  bool Enqueue(Task task) {
+    if (terminated_) {
+      return false;
+    }
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
     pending_tasks_.push_back(task);
     lock.unlock();
     task_pending_cv_.notify_one();
+    return true;
   }
 
  private:
-  bool done_ = false;
+  std::atomic<bool> terminated_;
   std::optional<std::string> thread_name_;
   std::vector<std::thread> workers_;
   std::mutex task_pending_mutex_;

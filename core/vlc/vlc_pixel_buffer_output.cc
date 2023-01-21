@@ -1,5 +1,7 @@
 #include "vlc/vlc_pixel_buffer_output.h"
 
+#include <iostream>
+
 #include "vlc/vlc_player.h"
 
 namespace foxglove {

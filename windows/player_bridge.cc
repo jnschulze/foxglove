@@ -7,7 +7,6 @@
 
 #include "media/media.h"
 #include "method_channel_utils.h"
-#include "plugin_state.h"
 
 namespace foxglove {
 namespace windows {
@@ -81,7 +80,8 @@ constexpr auto kMethodUnmute = "unmute";
 constexpr auto kEventType = "type";
 constexpr auto kEventValue = "value";
 
-constexpr auto kErrorBadArgs = "invalid_arguments";
+constexpr auto kErrorCodeBadArgs = "invalid_arguments";
+constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
 
 enum Events : int32_t {
   kNone,
@@ -134,27 +134,35 @@ PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
 }
 
 PlayerBridge::~PlayerBridge() {
-  // Channels handlers must not be unset during plugin destruction
+  // Channel handlers must not be unset during plugin destruction
   // See https://github.com/flutter/flutter/issues/118611
-  if (PluginState::IsValid()) {
+  if (IsMessengerValid()) {
     method_channel_->SetMethodCallHandler(nullptr);
     event_channel_->SetStreamHandler(nullptr);
+  }
+}
+
+void PlayerBridge::Enqueue(
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        method_result,
+    std::function<void(MethodResult result)> handler) {
+  MethodResult shared_result = std::move(method_result);
+  if (!task_queue_->Enqueue([shared_result, handler = std::move(handler)]() {
+        handler(shared_result);
+      })) {
+    shared_result->Error(kErrorCodePluginTerminated);
   }
 }
 
 void PlayerBridge::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!PluginState::IsValid()) {
-    result->Error("plugin_terminating");
+  if (!IsValid()) {
+    result->Error(kErrorCodePluginTerminated);
     return;
   }
 
   const auto& method_name = method_call.method_name();
-
-  std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
-      shared_result = std::move(result);
-
   if (method_name.compare(kMethodOpen) == 0) {
     if (auto map =
             std::get_if<flutter::EncodableMap>(method_call.arguments())) {
@@ -167,16 +175,16 @@ void PlayerBridge::HandleMethodCall(
               channels::TryGetMapElement<flutter::EncodableMap>(map, "media")) {
         auto media = TryCreateMedia(media_map);
         if (media) {
-          return task_queue_->Enqueue([player = player_,
-                                       media_ptr = media.release(), autostart,
-                                       result = shared_result]() {
-            std::unique_ptr<Media> media(media_ptr);
-            player->Open(std::move(media));
-            if (autostart) {
-              player->Play();
-            }
-            result->Success();
-          });
+          return Enqueue(std::move(result),
+                         [player = player_, media_ptr = media.release(),
+                          autostart](MethodResult result) {
+                           std::unique_ptr<Media> media(media_ptr);
+                           player->Open(std::move(media));
+                           if (autostart) {
+                             player->Play();
+                           }
+                           result->Success();
+                         });
         }
       } else if (auto playlist_map =
                      channels::TryGetMapElement<flutter::EncodableMap>(
@@ -184,53 +192,53 @@ void PlayerBridge::HandleMethodCall(
         auto playlist = player_->CreatePlaylist();
         PlaylistMode mode = PlaylistMode::single;
         TryPopulatePlaylist(playlist.get(), playlist_map, mode);
-        return task_queue_->Enqueue([player = player_,
-                                     playlist_ptr = playlist.release(), mode,
-                                     autostart, result = shared_result]() {
-          std::unique_ptr<Playlist> playlist(playlist_ptr);
-          player->Open(std::move(playlist));
-          player->SetPlaylistMode(mode);
-          if (autostart) {
-            player->Play();
-          }
-          result->Success();
-        });
+        return Enqueue(std::move(result),
+                       [player = player_, playlist_ptr = playlist.release(),
+                        mode, autostart](MethodResult result) {
+                         std::unique_ptr<Playlist> playlist(playlist_ptr);
+                         player->Open(std::move(playlist));
+                         player->SetPlaylistMode(mode);
+                         if (autostart) {
+                           player->Play();
+                         }
+                         result->Success();
+                       });
       }
     }
 
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodPlay) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Play();
       result->Success();
     });
   }
 
   if (method_name.compare(kMethodPause) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Pause();
       result->Success();
     });
   }
 
   if (method_name.compare(kMethodStop) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Stop();
       result->Success();
     });
   }
 
   if (method_name.compare(kMethodNext) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Next();
       result->Success();
     });
   }
 
   if (method_name.compare(kMethodPrevious) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Previous();
       result->Success();
     });
@@ -238,82 +246,84 @@ void PlayerBridge::HandleMethodCall(
 
   if (method_name.compare(kMethodSeekPosition) == 0) {
     if (auto value = std::get_if<double>(method_call.arguments())) {
-      return task_queue_->Enqueue(
-          [player = player_, value = *value, result = shared_result]() {
-            player->SeekPosition(static_cast<float>(value));
-            result->Success();
-          });
+      return Enqueue(std::move(result),
+                     [player = player_, value = *value](MethodResult result) {
+                       player->SeekPosition(static_cast<float>(value));
+                       result->Success();
+                     });
     }
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodSeekTime) == 0) {
     if (auto value = channels::TryGetIntValue(method_call.arguments())) {
-      return task_queue_->Enqueue(
-          [player = player_, value = value.value(), result = shared_result]() {
+      return Enqueue(
+          std::move(result),
+          [player = player_, value = value.value()](MethodResult result) {
             player->SeekTime(value);
             result->Success();
           });
     }
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodSetRate) == 0) {
     if (auto value = std::get_if<double>(method_call.arguments())) {
-      return task_queue_->Enqueue(
-          [player = player_, value = *value, result = shared_result]() {
-            player->SetRate(static_cast<float>(value));
-            result->Success();
-          });
+      return Enqueue(std::move(result),
+                     [player = player_, value = *value](MethodResult result) {
+                       player->SetRate(static_cast<float>(value));
+                       result->Success();
+                     });
     }
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodSetPlaylistMode) == 0) {
     if (auto value = std::get_if<int32_t>(method_call.arguments())) {
       PlaylistMode mode = PlaylistMode::single;
       if (TryConvertPlaylistMode(*value, mode)) {
-        return task_queue_->Enqueue(
-            [player = player_, mode, result = shared_result]() {
-              player->SetPlaylistMode(mode);
-              result->Success();
-            });
+        return Enqueue(std::move(result),
+                       [player = player_, mode](MethodResult result) {
+                         player->SetPlaylistMode(mode);
+                         result->Success();
+                       });
       }
     }
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodSetVolume) == 0) {
     if (auto value = std::get_if<double>(method_call.arguments())) {
-      return task_queue_->Enqueue(
-          [player = player_, value = *value, result = shared_result]() {
-            player->SetVolume(value);
-            result->Success();
-          });
+      return Enqueue(std::move(result),
+                     [player = player_, value = *value](MethodResult result) {
+                       player->SetVolume(value);
+                       result->Success();
+                     });
     }
-    return shared_result->Error(kErrorBadArgs);
+    return result->Error(kErrorCodeBadArgs);
   }
 
   if (method_name.compare(kMethodMute) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->SetMute(true);
       result->Success();
     });
   }
 
   if (method_name.compare(kMethodUnmute) == 0) {
-    return task_queue_->Enqueue([player = player_, result = shared_result]() {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->SetMute(false);
       result->Success();
     });
   }
 
-  std::cerr << "Got method call: " << method_name << std::endl;
-  shared_result->NotImplemented();
+  std::cerr << "Got unhandled method call: " << method_name << std::endl;
+  assert(result);
+  result->NotImplemented();
 }
 
 void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
-  if (PluginState::IsValid()) {
+  if (IsMessengerValid()) {
     const std::lock_guard<std::mutex> lock(event_sink_mutex_);
     if (event_sink_) {
       event_sink_->Success(event);

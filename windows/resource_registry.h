@@ -38,9 +38,9 @@ class PlayerRegistry {
   std::unordered_map<int64_t, std::unique_ptr<Player>> items_;
 };
 
-class ObjectRegistry {
+class PlayerResourceRegistry {
  public:
-  ObjectRegistry();
+  PlayerResourceRegistry();
 
   EnvironmentRegistry* environments() const {
     return environment_registry_.get();
@@ -52,7 +52,5 @@ class ObjectRegistry {
   std::unique_ptr<EnvironmentRegistry> environment_registry_;
   std::unique_ptr<PlayerRegistry> player_registry_;
 };
-
-extern std::unique_ptr<ObjectRegistry> g_registry;
 
 }  // namespace foxglove

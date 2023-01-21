@@ -1,10 +1,9 @@
 #include "method_channel_handler.h"
 
-#include <cassert>
+#include <future>
 
 #include "method_channel_utils.h"
 #include "player_environment.h"
-#include "plugin_state.h"
 #include "vlc/vlc_environment.h"
 
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
@@ -25,25 +24,44 @@ constexpr auto kMethodDisposePlayer = "disposePlayer";
 
 constexpr auto kErrorCodeInvalidArguments = "invalid_args";
 constexpr auto kErrorCodeInvalidId = "invalid_id";
+constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
 
 }  // namespace
 
 MethodChannelHandler::MethodChannelHandler(
-    ObjectRegistry* object_registry, flutter::BinaryMessenger* binary_messenger,
+    std::unique_ptr<PlayerResourceRegistry> resource_registry,
+    flutter::BinaryMessenger* binary_messenger,
     flutter::TextureRegistrar* texture_registrar,
     winrt::com_ptr<IDXGIAdapter> graphics_adapter)
-    : registry_(object_registry),
+    : registry_(std::move(resource_registry)),
       binary_messenger_(binary_messenger),
       texture_registrar_(texture_registrar),
       graphics_adapter_(std::move(graphics_adapter)),
       task_queue_(std::make_shared<TaskQueue>(
           1, "io.jns.foxglove.methodchannelhandler")) {}
 
+void MethodChannelHandler::Terminate() {
+  if (!IsValid()) {
+    return;
+  }
+
+  std::promise<void> promise;
+  task_queue_->Enqueue([&]() {
+    registry_->players()->Clear();
+    registry_->environments()->Clear();
+
+    task_queue_->Terminate();
+    promise.set_value();
+  });
+
+  promise.get_future().wait();
+}
+
 void MethodChannelHandler::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!PluginState::IsValid()) {
-    result->Error("plugin_terminating");
+  if (!IsValid()) {
+    result->Error(kErrorCodePluginTerminated);
     return;
   }
 
@@ -78,12 +96,14 @@ void MethodChannelHandler::InitPlatform(
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
 
-  task_queue_->Enqueue([this, shared_result]() {
-    // Clear old instances after hot restart.
-    registry_->players()->Clear();
-    registry_->environments()->Clear();
-    shared_result->Success();
-  });
+  if (!task_queue_->Enqueue([this, shared_result]() {
+        // Clear old instances after hot restart.
+        registry_->players()->Clear();
+        registry_->environments()->Clear();
+        shared_result->Success();
+      })) {
+    shared_result->Error(kErrorCodePluginTerminated);
+  }
 }
 
 void MethodChannelHandler::CreateEnvironment(
@@ -99,13 +119,15 @@ void MethodChannelHandler::CreateEnvironment(
 
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
-
-  task_queue_->Enqueue([this, args = std::move(env_args), shared_result]() {
-    auto env = std::make_shared<foxglove::VlcEnvironment>(args);
-    auto id = env->id();
-    registry_->environments()->RegisterEnvironment(id, std::move(env));
-    shared_result->Success(id);
-  });
+  if (!task_queue_->Enqueue(
+          [this, args = std::move(env_args), shared_result]() {
+            auto env = std::make_shared<foxglove::VlcEnvironment>(args);
+            auto id = env->id();
+            registry_->environments()->RegisterEnvironment(id, std::move(env));
+            shared_result->Success(id);
+          })) {
+    shared_result->Error(kErrorCodePluginTerminated);
+  }
 }
 
 void MethodChannelHandler::DisposeEnvironment(
@@ -115,15 +137,18 @@ void MethodChannelHandler::DisposeEnvironment(
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result = std::move(result);
 
-    task_queue_->Enqueue([id = *id, shared_result, registry = registry_]() {
-      if (registry->environments()->RemoveEnvironment(id)) {
-        shared_result->Success();
-      } else {
-        shared_result->Error(kErrorCodeInvalidId);
-      }
-    });
+    if (!task_queue_->Enqueue(
+            [id = *id, shared_result, registry = registry_.get()]() {
+              if (registry->environments()->RemoveEnvironment(id)) {
+                shared_result->Success();
+              } else {
+                shared_result->Error(kErrorCodeInvalidId);
+              }
+            })) {
+      result->Error(kErrorCodePluginTerminated);
+    }
   } else {
-    result->Error("invalid_arguments");
+    result->Error(kErrorCodeInvalidArguments);
   }
 }
 
@@ -144,30 +169,34 @@ void MethodChannelHandler::CreatePlayer(
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
 
-  task_queue_->Enqueue([environment_id, env_args = std::move(environment_args),
-                        shared_result, this]() {
-    std::shared_ptr<foxglove::PlayerEnvironment> env;
-    if (environment_id.has_value()) {
-      env = registry_->environments()->GetEnvironment(environment_id.value());
-      if (!env) {
-        return shared_result->Error(kErrorCodeInvalidId);
-      }
-    } else {
-      env = std::make_shared<foxglove::VlcEnvironment>(env_args);
-      if (!env) {
-        return shared_result->Error("env_creation_failed");
-      }
-    }
+  if (!task_queue_->Enqueue([environment_id,
+                             env_args = std::move(environment_args),
+                             shared_result, this]() {
+        std::shared_ptr<foxglove::PlayerEnvironment> env;
+        if (environment_id.has_value()) {
+          env =
+              registry_->environments()->GetEnvironment(environment_id.value());
+          if (!env) {
+            return shared_result->Error(kErrorCodeInvalidId);
+          }
+        } else {
+          env = std::make_shared<foxglove::VlcEnvironment>(env_args);
+          if (!env) {
+            return shared_result->Error("env_creation_failed");
+          }
+        }
 
-    auto player = env->CreatePlayer();
-    player->SetEventDelegate(std::make_unique<PlayerBridge>(
-        binary_messenger_, task_queue_, player.get()));
-    auto id = player->id();
-    auto texture_id = CreateVideoOutput(player.get());
-    registry_->players()->InsertPlayer(id, std::move(player));
-    shared_result->Success(
-        flutter::EncodableMap({{"player_id", id}, {"texture_id", texture_id}}));
-  });
+        auto player = env->CreatePlayer();
+        player->SetEventDelegate(std::make_unique<PlayerBridge>(
+            binary_messenger_, task_queue_, player.get()));
+        auto id = player->id();
+        auto texture_id = CreateVideoOutput(player.get());
+        registry_->players()->InsertPlayer(id, std::move(player));
+        shared_result->Success(flutter::EncodableMap(
+            {{"player_id", id}, {"texture_id", texture_id}}));
+      })) {
+    shared_result->Error(kErrorCodePluginTerminated);
+  }
 }
 
 int64_t MethodChannelHandler::CreateVideoOutput(Player* player) {
@@ -197,14 +226,17 @@ void MethodChannelHandler::DisposePlayer(
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result = std::move(result);
 
-    task_queue_->Enqueue([id = *id, shared_result, registry = registry_]() {
-      auto player = registry->players()->RemovePlayer(id);
-      if (player) {
-        shared_result->Success();
-      } else {
-        shared_result->Error(kErrorCodeInvalidId);
-      }
-    });
+    if (!task_queue_->Enqueue(
+            [id = *id, shared_result, registry = registry_.get()]() {
+              auto player = registry->players()->RemovePlayer(id);
+              if (player) {
+                shared_result->Success();
+              } else {
+                shared_result->Error(kErrorCodeInvalidId);
+              }
+            })) {
+      shared_result->Error(kErrorCodePluginTerminated);
+    }
   } else {
     result->Error(kErrorCodeInvalidArguments);
   }

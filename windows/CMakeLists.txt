@@ -9,12 +9,13 @@ add_subdirectory(../core "${CMAKE_BINARY_DIR}/${PROJECT_NAME}_core")
 set(PLUGIN_NAME "foxglove_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
-  "include/foxglove/foxglove_plugin_c_api.h"
-  "foxglove_plugin.h"
   "foxglove_plugin_c_api.cc"
   "foxglove_plugin.cc"
+  "foxglove_plugin.h"
+  "include/foxglove/foxglove_plugin_c_api.h"
   "method_channel_handler.cc"
   "player_bridge.cc"
+  "resource_registry.cc"
   "video/video_outlet_base.cc"
 )
 

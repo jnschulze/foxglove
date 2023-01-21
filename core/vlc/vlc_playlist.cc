@@ -1,7 +1,5 @@
 #include "vlc/vlc_playlist.h"
 
-#include <iostream>
-
 namespace foxglove {
 
 namespace {

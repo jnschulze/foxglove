@@ -1,4 +1,4 @@
-#include "globals.h"
+#include "resource_registry.h"
 
 #include "player_environment.h"
 #include "vlc/vlc_environment.h"
@@ -80,9 +80,8 @@ void PlayerRegistry::Clear() {
   items_.clear();
 }
 
-ObjectRegistry::ObjectRegistry()
+PlayerResourceRegistry::PlayerResourceRegistry()
     : environment_registry_(std::make_unique<EnvironmentRegistry>()),
       player_registry_(std::make_unique<PlayerRegistry>()) {}
 
-std::unique_ptr<ObjectRegistry> g_registry = std::make_unique<ObjectRegistry>();
 }  // namespace foxglove
