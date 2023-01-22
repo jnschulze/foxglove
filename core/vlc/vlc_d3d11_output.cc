@@ -36,6 +36,10 @@ static void list_dxgi_leaks() {
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
 
+#ifdef DEBUG_D3D11_LEAKS
+#pragma comment(lib, "dxguid.lib")
+#endif
+
 namespace foxglove {
 
 VlcD3D11Output::VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,

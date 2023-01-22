@@ -20,7 +20,7 @@ FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
                                flutter::TextureRegistrar* texture_registrar,
                                flutter::FlutterView* view) {
   winrt::com_ptr<IDXGIAdapter> graphics_adapter;
-  graphics_adapter.copy_from(view->GetGraphicsAdapter());
+  graphics_adapter.attach(view->GetGraphicsAdapter());
   if (graphics_adapter) {
     DXGI_ADAPTER_DESC desc;
     if (SUCCEEDED(graphics_adapter->GetDesc(&desc))) {
