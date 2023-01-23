@@ -133,10 +133,10 @@ void MethodChannelHandler::CreateEnvironment(
 void MethodChannelHandler::DisposeEnvironment(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (auto id = std::get_if<int64_t>(method_call.arguments())) {
-    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
-        shared_result = std::move(result);
+  std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+      shared_result = std::move(result);
 
+  if (auto id = std::get_if<int64_t>(method_call.arguments())) {
     if (!task_queue_->Enqueue(
             [id = *id, shared_result, registry = registry_.get()]() {
               if (registry->environments()->RemoveEnvironment(id)) {
@@ -145,10 +145,10 @@ void MethodChannelHandler::DisposeEnvironment(
                 shared_result->Error(kErrorCodeInvalidId);
               }
             })) {
-      result->Error(kErrorCodePluginTerminated);
+      shared_result->Error(kErrorCodePluginTerminated);
     }
   } else {
-    result->Error(kErrorCodeInvalidArguments);
+    shared_result->Error(kErrorCodeInvalidArguments);
   }
 }
 
@@ -222,10 +222,9 @@ int64_t MethodChannelHandler::CreateVideoOutput(Player* player) {
 void MethodChannelHandler::DisposePlayer(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+      shared_result = std::move(result);
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
-    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
-        shared_result = std::move(result);
-
     if (!task_queue_->Enqueue(
             [id = *id, shared_result, registry = registry_.get()]() {
               auto player = registry->players()->RemovePlayer(id);
@@ -238,7 +237,7 @@ void MethodChannelHandler::DisposePlayer(
       shared_result->Error(kErrorCodePluginTerminated);
     }
   } else {
-    result->Error(kErrorCodeInvalidArguments);
+    shared_result->Error(kErrorCodeInvalidArguments);
   }
 }
 
