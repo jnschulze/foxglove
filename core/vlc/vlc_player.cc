@@ -316,7 +316,7 @@ void VlcPlayer::SetupEventHandlers() {
   // });
 
   player_event_manager_->onPositionChanged(
-      [this](float position) { HandlePositionChanged(position); });
+      [this](double position) { HandlePositionChanged(position); });
 
   player_event_manager_->onSeekableChanged(
       [this](bool is_seekable) { HandleSeekableChanged(is_seekable); });
@@ -445,9 +445,9 @@ void VlcPlayer::HandleLengthChanged(int64_t length) {
   NotifyPositionChanged();
 }
 
-void VlcPlayer::HandlePositionChanged(float position) {
-  double pos = std::clamp(static_cast<double>(position), 0.0, 1.0);
-  media_state_.position = pos;
+void VlcPlayer::HandlePositionChanged(double position) {
+  position = std::clamp(position, 0.0, 1.0);
+  media_state_.position = position;
   NotifyPositionChanged();
 }
 

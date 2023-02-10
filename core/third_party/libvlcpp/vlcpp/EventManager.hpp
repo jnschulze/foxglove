@@ -597,13 +597,13 @@ class MediaPlayerEventManager : public EventManager
 
         /**
          * \brief onPositionChanged Registers an event called periodically to indicate the current playback position.
-         * \param f A std::function<void(float)> (or an equivalent Callable type)
-         *          Provided float in a number between 0 (beginning of the media) and 1 (end of the media)
+         * \param f A std::function<void(double)> (or an equivalent Callable type)
+         *          Provided double in a number between 0 (beginning of the media) and 1 (end of the media)
          */
         template <typename Func>
         RegisteredEvent onPositionChanged( Func&& f )
         {
-            EXPECT_SIGNATURE(void(float));
+            EXPECT_SIGNATURE(void(double));
             return handle( libvlc_MediaPlayerPositionChanged, std::forward<Func>( f ), [](const libvlc_event_t* e, void* data)
             {
                 auto callback = static_cast<DecayPtr<Func>>( data );

@@ -139,7 +139,7 @@ class VlcPlayer : public Player {
   void HandleVlcState(PlaybackState state);
   void HandleMediaChanged(VLC::MediaPtr vlc_media_ptr);
   void HandleLengthChanged(int64_t length);
-  void HandlePositionChanged(float relative_position);
+  void HandlePositionChanged(double relative_position);
   void HandleSeekableChanged(bool is_seekable);
   void HandleMuteChanged(bool is_mute);
   void HandleVolumeChanged(float volume);

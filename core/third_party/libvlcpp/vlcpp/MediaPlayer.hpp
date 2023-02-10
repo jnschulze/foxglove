@@ -376,7 +376,7 @@ public:
      *
      * \return movie position, or -1. in case of error
      */
-    float position()
+    double position()
     {
         return libvlc_media_player_get_position(*this);
     }
@@ -393,9 +393,9 @@ public:
      * \param b_fast prefer fast seeking or precise seeking
      */
 #if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
-    void setPosition(float f_pos, bool b_fast)
+    void setPosition(double pos, bool b_fast)
     {
-        libvlc_media_player_set_position(*this, f_pos, b_fast);
+        libvlc_media_player_set_position(*this, pos, b_fast);
     }
 #else
     void setPosition(float f_pos)
@@ -1036,7 +1036,6 @@ public:
     {
         return libvlc_audio_set_track(*this, i_track) == 0;
     }
-#endif
 
     /**
      * Get current audio channel.
@@ -1061,6 +1060,48 @@ public:
     {
         return libvlc_audio_set_channel(*this, channel) == 0;
     }
+
+#else // libvlc 4.0
+    /**
+     * Get current audio stereo mode.
+     *
+     * \return the audio stereo mode
+     */
+    libvlc_audio_output_stereomode_t stereoMode()
+    {
+        return libvlc_audio_get_stereomode(*this);
+    }
+
+    /**
+     * Set current audio stereo mode.
+     *
+     * \param mode the audio stereo mode
+     */
+    bool setStereoMode(libvlc_audio_output_stereomode_t mode)
+    {
+        return libvlc_audio_set_stereomode(*this, mode) == 0;
+    }
+
+    /**
+     * Get current audio mix mode.
+     *
+     * \return the audio mix mode
+     */
+    libvlc_audio_output_mixmode_t mixMode()
+    {
+        return libvlc_audio_get_mixmode(*this);
+    }
+
+    /**
+     * Set current audio mix mode.
+     *
+     * \param mode the audio mix mode
+     */
+    bool setMixMode(libvlc_audio_output_mixmode_t mode)
+    {
+        return libvlc_audio_set_mixmode(*this, mode) == 0;
+    }
+#endif // libvlc 4.0
 
     /**
      * Get current audio delay.
@@ -1876,12 +1917,13 @@ public:
 
 #if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
 
-    std::vector<MediaTrack> tracks( MediaTrack::Type type )
+    std::vector<MediaTrack> tracks( MediaTrack::Type type, bool selected )
     {
         using TrackListPtr = std::unique_ptr<libvlc_media_tracklist_t,
                                 decltype(&libvlc_media_tracklist_delete)>;
         TrackListPtr trackList{ libvlc_media_player_get_tracklist( *this,
-                                    static_cast<libvlc_track_type_t>( type ) ),
+                                    static_cast<libvlc_track_type_t>( type ),
+                                    selected ),
                                 &libvlc_media_tracklist_delete };
         if ( trackList == nullptr )
             return {};
