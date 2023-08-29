@@ -50,8 +50,6 @@ void VlcPixelBufferOutput::Attach(VlcPlayer* player) {
       });
 }
 
-void VlcPixelBufferOutput::Shutdown() { delegate_->Shutdown(); }
-
 unsigned VlcPixelBufferOutput::Setup(char* chroma, unsigned* width,
                                      unsigned* height, unsigned* pitches,
                                      unsigned* lines) {

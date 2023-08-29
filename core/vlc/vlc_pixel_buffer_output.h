@@ -14,7 +14,6 @@ class VlcPixelBufferOutput : public VlcVideoOutput {
                        PixelFormat format);
 
   void Attach(VlcPlayer* player) override;
-  void Shutdown() override;
 
   VideoOutputDelegate* output_delegate() const override {
     return delegate_.get();

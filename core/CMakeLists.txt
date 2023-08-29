@@ -76,6 +76,7 @@ add_library(${LIBRARY_NAME} STATIC
   vlc/vlc_player.cc
   vlc/vlc_playlist.cc
   vlc/vlc_pixel_buffer_output.cc
+  vlc/vlc_d3d11_context.cc
   vlc/vlc_d3d11_output.cc
 )
 
@@ -101,6 +102,8 @@ target_include_directories(${LIBRARY_NAME} INTERFACE
 
 # Windows
 if(WIN32)
+  target_compile_definitions(${LIBRARY_NAME} PUBLIC "$<$<CONFIG:DEBUG>:DEBUG_D3D11_LEAKS>")
+
   set_target_properties(${LIBRARY_NAME} PROPERTIES CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(${LIBRARY_NAME} PRIVATE
     "${LIBVLC_SOURCE}/sdk/lib/libvlc.lib"

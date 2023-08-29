@@ -10,7 +10,6 @@ class VlcPlayer;
 class VlcVideoOutput : public VideoOutput {
  public:
   virtual void Attach(VlcPlayer* player) = 0;
-  virtual void Shutdown() = 0;
 
   const VideoDimensions& dimensions() const override {
     return current_dimensions_;
@@ -27,7 +26,7 @@ class VlcVideoOutput : public VideoOutput {
   VideoDimensionsCallback dimensions_changed_;
   VideoDimensions current_dimensions_{};
 
-  void SetDimensions(VideoDimensions& dimensions) {
+  void SetDimensions(VideoDimensions&& dimensions) {
     if (current_dimensions_ != dimensions) {
       current_dimensions_ = dimensions;
 

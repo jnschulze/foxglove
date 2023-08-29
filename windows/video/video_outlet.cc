@@ -105,8 +105,6 @@ void VideoOutlet::PresentBuffer(const VideoDimensions& dimensions,
   }
 }
 
-void VideoOutlet::Shutdown() { Unregister(); }
-
 VideoOutlet::~VideoOutlet() { Unregister(); }
 
 }  // namespace windows

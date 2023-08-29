@@ -14,9 +14,9 @@ class VideoOutletD3d : public TextureOutlet, public D3D11OutputDelegate {
 
   void SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) override;
   void Present() override;
-  void Shutdown() override;
 
  private:
+  HANDLE shared_handle_ = INVALID_HANDLE_VALUE;
   std::unique_ptr<flutter::TextureVariant> texture_ = nullptr;
   winrt::com_ptr<ID3D11Texture2D> d3d_texture_;
   FlutterDesktopGpuSurfaceDescriptor surface_descriptor_{};

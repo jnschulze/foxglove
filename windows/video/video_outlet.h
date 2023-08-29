@@ -19,7 +19,6 @@ class VideoOutlet : public TextureOutlet, public PixelBufferOutputDelegate {
   void UnlockBuffer(void* user_data) override;
   void PresentBuffer(const VideoDimensions& dimensions,
                      void* user_data) override;
-  void Shutdown() override;
 
  private:
   mutable std::mutex buffer_mutex_;

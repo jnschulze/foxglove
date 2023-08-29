@@ -56,8 +56,6 @@ void VlcPlayer::Shutdown() {
     playlist->OnUpdate(nullptr);
   }
 
-  video_output_->Shutdown();
-
   media_list_player_->SetPlaylist(nullptr);
 }
 
