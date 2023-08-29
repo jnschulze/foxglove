@@ -43,9 +43,6 @@ abstract class Player {
   /// Stream to listen to dimensions of currently playing video.
   Stream<VideoDimensions> get videoDimensionsStream;
 
-  /// Stream for listening to video frames.
-  Stream<VideoFrame> get videoFrameStream;
-
   Future<void> open(MediaSource media, {bool autoStart = true});
   Future<void> setPlaylistMode(PlaylistMode playlistMode);
   Future<void> play();

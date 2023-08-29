@@ -22,7 +22,6 @@ mixin _StreamControllers {
   final _positionStateController = StreamController<PositionState>.broadcast();
   final _playbackStateController = StreamController<PlaybackStatus>.broadcast();
   final _generalStateController = StreamController<GeneralState>.broadcast();
-  final _videoFrameController = StreamController<VideoFrame>.broadcast();
 
   CurrentMediaState _currentMediaState = const CurrentMediaState();
   PositionState _positionState = const PositionState();
@@ -32,7 +31,6 @@ mixin _StreamControllers {
 
   void _closeControllers() {
     _videoDimensionsStreamController.close();
-    _videoFrameController.close();
     _currentMediaStateController.close();
     _positionStateController.close();
     _playbackStateController.close();
@@ -157,9 +155,6 @@ class _PlayerImpl with _StreamControllers implements Player {
   @override
   Stream<VideoDimensions> get videoDimensionsStream =>
       _videoDimensionsStreamController.stream;
-
-  @override
-  Stream<VideoFrame> get videoFrameStream => _videoFrameController.stream;
 
   @override
   Future<void> open(MediaSource source, {bool autoStart = true}) async {
