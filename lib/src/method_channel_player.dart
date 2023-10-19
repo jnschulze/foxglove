@@ -321,7 +321,7 @@ class _PlayerImpl with _StreamControllers implements Player {
       case _PlatformEvent.positionChanged:
         final position = ev['position'] as double;
         final duration = ev['duration'] as int;
-        _logger.info('Position changed: $position');
+        _logger.finest('Position changed: $position');
 
         assert(position >= 0 && position <= 1);
         _positionState = _positionState.copyWith(
