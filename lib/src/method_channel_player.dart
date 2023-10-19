@@ -112,7 +112,7 @@ class _PlayerImpl with _StreamControllers implements Player {
   final EventChannel _eventChannel;
   StreamSubscription? _eventChannelSubscription;
   bool _isDisposed = false;
-  final Logger _logger = Logger('Foxglove::Player');
+  final Logger _logger = Logger('Foxglove:Player');
 
   _PlayerImpl(
       {required this.platform,
