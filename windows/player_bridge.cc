@@ -98,8 +98,11 @@ enum Events : int32_t {
 
 PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
                            std::shared_ptr<TaskQueue> task_queue,
-                           Player* player)
-    : player_(player), task_queue_(std::move(task_queue)) {
+                           Player* player,
+                           std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher)
+    : player_(player),
+      task_queue_(std::move(task_queue)),
+      main_thread_dispatcher_(main_thread_dispatcher) {
   auto method_channel_name = string_format("foxglove/%I64i", player->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -323,12 +326,14 @@ void PlayerBridge::HandleMethodCall(
 }
 
 void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
-  if (IsMessengerValid()) {
-    const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-    if (event_sink_) {
-      event_sink_->Success(event);
+  main_thread_dispatcher_->Dispatch([this, event] {
+    if (IsMessengerValid()) {
+      auto lock = std::lock_guard(event_sink_mutex_);
+      if (event_sink_) {
+        event_sink_->Success(event);
+      }
     }
-  }
+  });
 }
 
 void PlayerBridge::OnMediaChanged(const Media* media,

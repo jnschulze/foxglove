@@ -49,6 +49,7 @@ class MethodChannelHandler {
   flutter::BinaryMessenger* binary_messenger_;
   std::unique_ptr<PlayerResourceRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;
+  std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher_;
 
   int64_t CreateVideoOutput(Player* player);
 };
