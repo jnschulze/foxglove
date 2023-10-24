@@ -40,9 +40,9 @@ class VlcD3D11Output : public VlcVideoOutput {
   static bool SelectPlaneCb(void* opaque, size_t plane, void* out);
   static void ResizeCb(
       void* opaque, libvlc_video_output_resize_cb report_size_change,
-      libvlc_video_output_mouse_move_cb report_mouse_move,
-      libvlc_video_output_mouse_press_cb report_mouse_pressed,
-      libvlc_video_output_mouse_release_cb report_mouse_released,
+      // libvlc_video_output_mouse_move_cb report_mouse_move,
+      // libvlc_video_output_mouse_press_cb report_mouse_pressed,
+      // libvlc_video_output_mouse_release_cb report_mouse_released,
       void* report_opaque);
 };
 

@@ -12,6 +12,7 @@
 #include "base/task_queue.h"
 #include "player.h"
 #include "plugin_state.h"
+#include "base/single_thread_dispatcher.h"
 
 namespace foxglove {
 namespace windows {
@@ -19,7 +20,8 @@ namespace windows {
 class PlayerBridge : public PlayerEventDelegate {
  public:
   PlayerBridge(flutter::BinaryMessenger* messenger,
-               std::shared_ptr<TaskQueue> task_queue, Player* player);
+               std::shared_ptr<TaskQueue> task_queue,
+                Player* player, std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher);
   ~PlayerBridge() override;
 
   void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
@@ -44,6 +46,7 @@ class PlayerBridge : public PlayerEventDelegate {
       method_channel_;
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
+  std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher_;
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
