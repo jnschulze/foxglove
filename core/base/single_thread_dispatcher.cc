@@ -4,7 +4,7 @@ namespace foxglove {
 namespace windows {
 
 SingleThreadDispatcher::SingleThreadDispatcher()
-    : message_window_(
+    : terminated_(false), message_window_(
           std::make_unique<MessageWindow>([this]() { ProcessTasks(); })) {}
 
 SingleThreadDispatcher::~SingleThreadDispatcher() = default;
@@ -26,12 +26,12 @@ void SingleThreadDispatcher::Terminate() {
 }
 
 void SingleThreadDispatcher::Dispatch(Task task) {
+
   auto lock = std::lock_guard(task_guard_);
 
   if (terminated_) {
     return;
   }
-
   tasks_.push_back(std::move(task));
   message_window_->WakeUp();
 }
