@@ -1,6 +1,5 @@
 #include "single_thread_dispatcher.h"
 
-#include <iostream>
 namespace foxglove {
 namespace windows {
 
