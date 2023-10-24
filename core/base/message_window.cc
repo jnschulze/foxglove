@@ -1,6 +1,4 @@
 #include "message_window.h"
-// This must be included before many other Windows headers.
-#include <windows.h>
 
 #include <cassert>
 #include <iostream>
@@ -8,14 +6,13 @@
 namespace foxglove {
 namespace windows {
 
-void printLastError() {
+void PrintLastError() {
   auto error = GetLastError();
   LPWSTR message = nullptr;
   FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                      FORMAT_MESSAGE_IGNORE_INSERTS,
                  NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                  reinterpret_cast<LPWSTR>(&message), 0, NULL);
-				 std::wcout << "Error: " << error << std::endl;
   OutputDebugString(message);
   LocalFree(message);
 }
@@ -28,13 +25,13 @@ MessageWindow::MessageWindow(Delegate taskExecutor)
                      HWND_MESSAGE, nullptr, window_class.hInstance, nullptr);
 
   if (window_handle_) {
-	SetLastError(0);
+    SetLastError(0);
     if (SetWindowLongPtr(window_handle_, GWLP_USERDATA,
                          reinterpret_cast<LONG_PTR>(this)) == 0) {
-      printLastError();
+      PrintLastError();
     }
   } else {
-    printLastError();
+    PrintLastError();
   }
 }
 

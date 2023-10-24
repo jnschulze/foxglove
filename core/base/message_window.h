@@ -1,12 +1,8 @@
 #pragma once
 
-#include <deque>
-
-#include <memory>
-#include <mutex>
 #include <Windows.h>
+#include <string>
 #include <functional>
-
 
 namespace foxglove {
 namespace windows {
@@ -18,9 +14,10 @@ class MessageWindow {
   MessageWindow(Delegate taskExecutor);
   ~MessageWindow();
 
-/**
- * Sends a message to the window so that it can execute the taskExecutor on the thread it was created on.
-*/
+  /**
+   * Sends a message to the window so that it can execute the taskExecutor on
+   * the thread it was created on.
+   */
   void WakeUp();
 
  private:

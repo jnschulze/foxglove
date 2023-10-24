@@ -1,10 +1,8 @@
 #pragma once
 
-#include <deque>
-#include <memory>
-#include <mutex>
 #include <functional>
-#include <atomic>
+#include <deque>
+#include <mutex>
 
 #include "message_window.h"
 namespace foxglove {
@@ -23,12 +21,13 @@ class SingleThreadDispatcher {
 
   void Dispatch(Task task);
   void Terminate();
+
  private:
   void ProcessTasks();
-  std::vector<Task> tasks_;
+  std::deque<Task> tasks_;
   std::unique_ptr<MessageWindow> message_window_;
   std::mutex task_guard_;
-  std::atomic_bool terminated_;
+  bool terminated_;
 };
 
 }  // namespace windows
