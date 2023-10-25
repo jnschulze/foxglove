@@ -104,14 +104,14 @@ PlayerBridge::PlayerBridge(
     : player_(player),
       task_queue_(std::move(task_queue)),
       main_thread_dispatcher_(main_thread_dispatcher) {
-  auto method_channel_name = string_format("foxglove/%I64i", player_->id());
+  auto method_channel_name = string_format("foxglove/%I64i", player->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger, method_channel_name,
           &flutter::StandardMethodCodec::GetInstance());
 
   const auto event_channel_name =
-      string_format("foxglove/%I64i/events", player_->id());
+      string_format("foxglove/%I64i/events", player->id());
   event_channel_ =
       std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
           messenger, event_channel_name,
