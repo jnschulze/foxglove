@@ -9,10 +9,10 @@
 #include <memory>
 #include <mutex>
 
+#include "base/single_thread_dispatcher.h"
 #include "base/task_queue.h"
 #include "player.h"
 #include "plugin_state.h"
-#include "base/single_thread_dispatcher.h"
 
 namespace foxglove {
 namespace windows {
@@ -20,8 +20,8 @@ namespace windows {
 class PlayerBridge : public PlayerEventDelegate {
  public:
   PlayerBridge(flutter::BinaryMessenger* messenger,
-               std::shared_ptr<TaskQueue> task_queue,
-                Player* player, std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher);
+               std::shared_ptr<TaskQueue> task_queue, Player* player,
+               std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher);
   ~PlayerBridge() override;
 
   void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
@@ -38,6 +38,7 @@ class PlayerBridge : public PlayerEventDelegate {
   inline bool IsMessengerValid() const { return PluginState::IsValid(); }
 
  private:
+  typedef std::function<void()> VoidCallback;
   Player* player_;
   std::shared_ptr<TaskQueue> task_queue_;
   std::mutex event_sink_mutex_;
@@ -47,6 +48,11 @@ class PlayerBridge : public PlayerEventDelegate {
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
   std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher_;
+
+  // Asynchronously registers the channel handlers on the main thread.
+  void RegisterChannelHandlers(VoidCallback callback);
+  // Asynchronously unregisters the channel handlers on the main thread.
+  void UnregisterChannelHandlers(VoidCallback callback);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,

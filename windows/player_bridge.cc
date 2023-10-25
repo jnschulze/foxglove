@@ -3,6 +3,7 @@
 
 #include <flutter/event_stream_handler_functions.h>
 
+#include <future>
 #include <optional>
 
 #include "media/media.h"
@@ -96,53 +97,79 @@ enum Events : int32_t {
 
 }  // namespace
 
-PlayerBridge::PlayerBridge(flutter::BinaryMessenger* messenger,
-                           std::shared_ptr<TaskQueue> task_queue,
-                           Player* player,
-                           std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher)
+PlayerBridge::PlayerBridge(
+    flutter::BinaryMessenger* messenger, std::shared_ptr<TaskQueue> task_queue,
+    Player* player,
+    std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher)
     : player_(player),
       task_queue_(std::move(task_queue)),
       main_thread_dispatcher_(main_thread_dispatcher) {
-  auto method_channel_name = string_format("foxglove/%I64i", player->id());
+  auto method_channel_name = string_format("foxglove/%I64i", player_->id());
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger, method_channel_name,
           &flutter::StandardMethodCodec::GetInstance());
-  method_channel_->SetMethodCallHandler([this](const auto& call, auto result) {
-    HandleMethodCall(call, std::move(result));
-  });
 
   const auto event_channel_name =
-      string_format("foxglove/%I64i/events", player->id());
+      string_format("foxglove/%I64i/events", player_->id());
   event_channel_ =
       std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
           messenger, event_channel_name,
           &flutter::StandardMethodCodec::GetInstance());
 
-  auto handler = std::make_unique<
-      flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-      [this](const flutter::EncodableValue* arguments,
-             std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
-                 events) {
-        event_sink_ = std::move(events);
-        return nullptr;
-      },
-      [this](const flutter::EncodableValue* arguments) {
-        const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-        event_sink_.reset();
-        return nullptr;
-      });
-
-  event_channel_->SetStreamHandler(std::move(handler));
+  std::promise<void> promise;
+  RegisterChannelHandlers([&]() { promise.set_value(); });
+  promise.get_future().wait();
 }
 
 PlayerBridge::~PlayerBridge() {
-  // Channel handlers must not be unset during plugin destruction
-  // See https://github.com/flutter/flutter/issues/118611
-  if (IsMessengerValid()) {
-    method_channel_->SetMethodCallHandler(nullptr);
-    event_channel_->SetStreamHandler(nullptr);
-  }
+  std::promise<void> promise;
+  UnregisterChannelHandlers([&]() { promise.set_value(); });
+  promise.get_future().wait();
+}
+
+void PlayerBridge::RegisterChannelHandlers(VoidCallback callback) {
+  main_thread_dispatcher_->Dispatch([this, callback]() {
+    method_channel_->SetMethodCallHandler(
+        [this](const auto& call, auto result) {
+          HandleMethodCall(call, std::move(result));
+        });
+
+    auto handler = std::make_unique<
+        flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
+        [this](const flutter::EncodableValue* arguments,
+               std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
+                   events) {
+          event_sink_ = std::move(events);
+          return nullptr;
+        },
+        [this](const flutter::EncodableValue* arguments) {
+          const std::lock_guard<std::mutex> lock(event_sink_mutex_);
+          event_sink_.reset();
+          return nullptr;
+        });
+
+    event_channel_->SetStreamHandler(std::move(handler));
+
+    if (callback) {
+      callback();
+    }
+  });
+}
+
+void PlayerBridge::UnregisterChannelHandlers(VoidCallback callback) {
+  main_thread_dispatcher_->Dispatch([this, callback]() {
+    // Channel handlers must not be unset during plugin destruction
+    // See https://github.com/flutter/flutter/issues/118611
+    if (IsMessengerValid()) {
+      method_channel_->SetMethodCallHandler(nullptr);
+      event_channel_->SetStreamHandler(nullptr);
+    }
+
+    if (callback) {
+      callback();
+    }
+  });
 }
 
 void PlayerBridge::Enqueue(
@@ -328,7 +355,7 @@ void PlayerBridge::HandleMethodCall(
 void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
   main_thread_dispatcher_->Dispatch([this, event] {
     if (IsMessengerValid()) {
-      auto lock = std::lock_guard(event_sink_mutex_);
+      const std::lock_guard<std::mutex> lock(event_sink_mutex_);
       if (event_sink_) {
         event_sink_->Success(event);
       }
