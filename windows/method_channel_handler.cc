@@ -39,7 +39,7 @@ MethodChannelHandler::MethodChannelHandler(
       graphics_adapter_(std::move(graphics_adapter)),
       task_queue_(std::make_shared<TaskQueue>(
           1, "io.jns.foxglove.methodchannelhandler")),
-      main_thread_dispatcher_(std::make_shared<SingleThreadDispatcher>()) {}
+      main_thread_dispatcher_(std::make_shared<MainThreadDispatcher>()) {}
 
 void MethodChannelHandler::Terminate() {
   if (!IsValid()) {

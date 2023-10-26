@@ -100,7 +100,7 @@ enum Events : int32_t {
 PlayerBridge::PlayerBridge(
     flutter::BinaryMessenger* messenger, std::shared_ptr<TaskQueue> task_queue,
     Player* player,
-    std::shared_ptr<SingleThreadDispatcher> main_thread_dispatcher)
+    std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher)
     : player_(player),
       task_queue_(std::move(task_queue)),
       main_thread_dispatcher_(main_thread_dispatcher) {

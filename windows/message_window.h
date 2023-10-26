@@ -5,7 +5,7 @@
 #include <functional>
 #include <string>
 
-#include "thread_checker.h"
+#include "base/thread_checker.h"
 
 namespace foxglove {
 namespace windows {
