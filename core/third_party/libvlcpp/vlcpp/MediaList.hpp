@@ -33,7 +33,6 @@ namespace VLC
 
 class Media;
 class MediaListEventManager;
-class MediaDiscoverer;
 class MediaLibrary;
 
 class MediaList : public Internal<libvlc_media_list_t>
@@ -63,46 +62,6 @@ public:
     }
 
     /**
-     * Get media service discover media list.
-     *
-     * \param p_mdis  media service discover object
-     */
-    MediaList(MediaDiscoverer& mdis)
-        : Internal{ libvlc_media_discoverer_media_list( getInternalPtr<libvlc_media_discoverer_t>( mdis ) ),
-                    libvlc_media_list_release }
-    {
-    }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Get media library subitems.
-     *
-     * \param p_mlib  media library object
-     */
-    MediaList(MediaLibrary& mlib)
-        : Internal{ libvlc_media_library_media_list( getInternalPtr<libvlc_media_library_t>( mlib ) ), libvlc_media_list_release }
-    {
-    }
-
-    /**
-     * Create an empty VLC MediaList instance.
-     *
-     * Calling any method on such an instance is undefined.
-    */
-    MediaList() = default;
-
-    /**
-     * Create an empty media list.
-     *
-     * \param p_instance  libvlc instance
-     */
-    MediaList(Instance& instance)
-        : Internal{ libvlc_media_list_new( getInternalPtr<libvlc_instance_t>( instance ) ),
-                                           libvlc_media_list_release }
-    {
-    }
-#else
-    /**
      * Create an empty media list.
      *
      * \param p_instance  libvlc instance
@@ -112,7 +71,6 @@ public:
                     libvlc_media_list_release }
     {
     }
-#endif
 
     MediaList( Internal::InternalPtr mediaList )
         : Internal{ mediaList, libvlc_media_list_release }
