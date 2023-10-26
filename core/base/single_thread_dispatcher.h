@@ -1,17 +1,17 @@
 #pragma once
 
-#include <functional>
 #include <deque>
+#include <functional>
 #include <mutex>
 
 #include "message_window.h"
+#include "thread_checker.h"
+
 namespace foxglove {
 namespace windows {
-/**
- * SingleThreadDispatcher
- * All task enqueued will be run on the thread where the dispatcherr is created.
- */
 
+// SingleThreadDispatcher
+// All task enqueued will be run on the thread where the dispatcher is created.
 class SingleThreadDispatcher {
  public:
   using Task = std::function<void()>;
@@ -21,13 +21,18 @@ class SingleThreadDispatcher {
 
   void Dispatch(Task task);
   void Terminate();
+  bool RunsTasksOnCurrentThread() const {
+    return thread_checker_.IsCreationThreadCurrent();
+  }
 
  private:
-  void ProcessTasks();
+  ThreadChecker thread_checker_;
+  std::mutex tasks_mutex_;
   std::deque<Task> tasks_;
   std::unique_ptr<MessageWindow> message_window_;
-  std::mutex task_guard_;
   bool terminated_;
+
+  void ProcessTasks();
 };
 
 }  // namespace windows

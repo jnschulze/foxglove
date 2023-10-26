@@ -1,53 +1,58 @@
 #include "single_thread_dispatcher.h"
 
+#include <cassert>
+
 namespace foxglove {
 namespace windows {
 
 SingleThreadDispatcher::SingleThreadDispatcher()
-    : terminated_(false), message_window_(
+    : terminated_(false),
+      message_window_(
           std::make_unique<MessageWindow>([this]() { ProcessTasks(); })) {}
 
-SingleThreadDispatcher::~SingleThreadDispatcher() = default;
-/**
- * Call this method from the same thread it was created
- */
+SingleThreadDispatcher::~SingleThreadDispatcher() { assert(terminated_); }
+
 void SingleThreadDispatcher::Terminate() {
   {
     // we need to release the lock before calling ProcessTasks
-    auto lock = std::lock_guard(task_guard_);
-
+    const std::lock_guard<std::mutex> lock(tasks_mutex_);
     if (terminated_) {
       return;
     }
     terminated_ = true;
   }
+
   // execute all pending tasks
   ProcessTasks();
 }
 
 void SingleThreadDispatcher::Dispatch(Task task) {
-
-  auto lock = std::lock_guard(task_guard_);
-
-  if (terminated_) {
-    return;
+  if (RunsTasksOnCurrentThread()) {
+    task();
+  } else {
+    const std::lock_guard<std::mutex> lock(tasks_mutex_);
+    if (terminated_) {
+      return;
+    }
+    tasks_.push_back(std::move(task));
+    message_window_->WakeUp();
   }
-  tasks_.push_back(std::move(task));
-  message_window_->WakeUp();
 }
 
 void SingleThreadDispatcher::ProcessTasks() {
+  assert(thread_checker_.IsCreationThreadCurrent());
   std::deque<Task> current_tasks;
   {
-    auto lock = std::lock_guard(task_guard_);
+    const std::lock_guard<std::mutex> lock(tasks_mutex_);
     tasks_.swap(current_tasks);
   }
   if (current_tasks.empty()) {
     return;
   }
-  for (auto& current_task : current_tasks) {
+  for (const auto& current_task : current_tasks) {
     current_task();
   }
 }
+
 }  // namespace windows
 }  // namespace foxglove

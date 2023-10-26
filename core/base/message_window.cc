@@ -6,19 +6,21 @@
 namespace foxglove {
 namespace windows {
 
+namespace {
 void PrintLastError() {
   auto error = GetLastError();
   LPWSTR message = nullptr;
   FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                      FORMAT_MESSAGE_IGNORE_INSERTS,
-                 NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                 reinterpret_cast<LPWSTR>(&message), 0, NULL);
+                 nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                 reinterpret_cast<LPWSTR>(&message), 0, nullptr);
   OutputDebugString(message);
   LocalFree(message);
 }
+}  // namespace
 
-MessageWindow::MessageWindow(Delegate taskExecutor)
-    : task_executor_(taskExecutor), main_thread_id_(GetCurrentThreadId()) {
+MessageWindow::MessageWindow(Delegate task_executor)
+    : task_executor_(task_executor) {
   WNDCLASS window_class = RegisterWindowClass();
   window_handle_ =
       CreateWindowEx(0, window_class.lpszClassName, L"", 0, 0, 0, 0, 0,
@@ -68,7 +70,7 @@ WNDCLASS MessageWindow::RegisterWindowClass() {
 }
 
 void MessageWindow::ProcessTasks() {
-  assert(main_thread_id_ == GetCurrentThreadId());
+  assert(thread_checker_.IsCreationThreadCurrent());
   task_executor_();
 }
 
