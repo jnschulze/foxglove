@@ -46,7 +46,6 @@ void MethodChannelHandler::Terminate() {
     return;
   }
 
-
   std::promise<void> promise;
   task_queue_->Enqueue([&]() {
     registry_->players()->Clear();
@@ -56,12 +55,11 @@ void MethodChannelHandler::Terminate() {
     promise.set_value();
   });
 
-
   promise.get_future().wait();
 
-  // make sure we make a last call to the main thread dispatcher to finish pending work
+  // make sure we make a last call to the main thread dispatcher to finish
+  // pending work
   main_thread_dispatcher_->Terminate();
-
 }
 
 void MethodChannelHandler::HandleMethodCall(
@@ -195,7 +193,8 @@ void MethodChannelHandler::CreatePlayer(
 
         auto player = env->CreatePlayer();
         player->SetEventDelegate(std::make_unique<PlayerBridge>(
-            binary_messenger_, task_queue_, player.get(), main_thread_dispatcher_));
+            binary_messenger_, task_queue_, player.get(),
+            main_thread_dispatcher_));
         auto id = player->id();
         auto texture_id = CreateVideoOutput(player.get());
         registry_->players()->InsertPlayer(id, std::move(player));

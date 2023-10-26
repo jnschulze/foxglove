@@ -4,8 +4,6 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
-#include <unordered_map>
-
 #include "base/task_queue.h"
 #include "player_bridge.h"
 #include "resource_registry.h"
