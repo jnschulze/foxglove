@@ -25,15 +25,10 @@
 #define LIBVLC_CXX_VLC_H
 
 #include "Instance.hpp"
-#include "Equalizer.hpp"
 #include "MediaListPlayer.hpp"
-#include "MediaDiscoverer.hpp"
-#include "Picture.hpp"
 #include "Media.hpp"
 #include "MediaList.hpp"
-#include "RendererDiscoverer.hpp"
 #include "MediaPlayer.hpp"
-#include "MediaLibrary.hpp"
 #include "EventManager.hpp"
 #include "structures.hpp"
 

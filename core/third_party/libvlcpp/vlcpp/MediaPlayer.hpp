@@ -35,7 +35,6 @@ namespace VLC
 {
 
 class AudioOutputDeviceDescription;
-class Equalizer;
 class Instance;
 class Media;
 class MediaPlayerEventManager;
@@ -66,14 +65,12 @@ private:
         VideoCleanup,
     };
 public:
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     enum class DeinterlaceState : signed char
     {
         Auto     = -1,
         Disabled =  0,
         Enabled  =  1
     };
-#endif
 
     /**
      * Check if 2 MediaPlayer objects contain the same libvlc_media_player_t.
@@ -102,7 +99,6 @@ public:
     {
     }
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     /**
      * Create a Media Player object from a Media
      *
@@ -115,19 +111,7 @@ public:
                     libvlc_media_player_release }
     {
     }
-#else
-    /**
-     * Create a Media Player object from a Media
-     *
-     * \param p_md  the media. Afterwards the p_md can be safely destroyed.
-     */
-    MediaPlayer( Media& md )
-        : Internal{ libvlc_media_player_new_from_media(
-                        getInternalPtr<libvlc_media_t>( md ) ),
-                    libvlc_media_player_release }
-    {
-    }
-#endif
+
     /**
      * Create an empty VLC MediaPlayer instance.
      *
@@ -213,7 +197,6 @@ public:
         libvlc_media_player_pause(*this);
     }
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     /**
      * @brief stop Stop the playback (no effect if there is no media)
      */
@@ -221,19 +204,6 @@ public:
     {
         libvlc_media_player_stop_async(*this);
     }
-#else
-    /**
-     * @brief stop Stop the playback (no effect if there is no media)
-     *
-     * \warning This is synchronous, and will block until all VLC threads have
-     *          been joined.
-     *          Calling this from a VLC callback is a bound to cause a deadlock.
-     */
-    void stop()
-    {
-        libvlc_media_player_stop(*this);
-    }
-#endif
 
     /**
      * Set the NSView handler where the media player should render its video
@@ -359,17 +329,10 @@ public:
      * \version{4.x}
      * \param b_fast  prefer fast seeking or precise seeking
      */
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     void setTime(libvlc_time_t i_time, bool b_fast)
     {
         libvlc_media_player_set_time(*this, i_time, b_fast);
     }
-#else
-    void setTime(libvlc_time_t i_time)
-    {
-        libvlc_media_player_set_time(*this, i_time);
-    }
-#endif
 
     /**
      * Get movie position as percentage between 0.0 and 1.0.
@@ -392,17 +355,10 @@ public:
      * \version{4.x}
      * \param b_fast prefer fast seeking or precise seeking
      */
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     void setPosition(double pos, bool b_fast)
     {
         libvlc_media_player_set_position(*this, pos, b_fast);
     }
-#else
-    void setPosition(float f_pos)
-    {
-        libvlc_media_player_set_position(*this, f_pos);
-    }
-#endif
 
     /**
      * Set movie chapter (if applicable).
@@ -433,18 +389,6 @@ public:
     {
         return libvlc_media_player_get_chapter_count(*this);
     }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Is the player able to play
-     *
-     * \return boolean
-     */
-    bool willPlay()
-    {
-        return libvlc_media_player_will_play(*this) != 0;
-    }
-#endif
 
     /**
      * Get title chapter count
@@ -541,19 +485,6 @@ public:
     {
         return libvlc_media_player_get_state(*this);
     }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(3, 0, 0, 0)
-    /**
-     * Get movie fps rate
-     *
-     * \return frames per second (fps) for this playing movie, or 0 if
-     * unspecified
-     */
-    float fps()
-    {
-        return libvlc_media_player_get_fps(*this);
-    }
-#endif
 
     /**
      * Get the amount of video outputs this media player has?
@@ -669,63 +600,6 @@ public:
     bool fullscreen()
     {
         return libvlc_get_fullscreen(*this) != 0;
-    }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(3, 0, 0, 0)
-    /**
-     * Toggle teletext transparent status on video output.
-     */
-    void toggleTeletext()
-    {
-        libvlc_toggle_teletext(*this);
-    }
-#endif
-
-    /**
-     * Apply new equalizer settings to a media player.
-     *
-     * The equalizer is first created by invoking
-     * libvlc_audio_equalizer_new() or
-     * libvlc_audio_equalizer_new_from_preset() .
-     *
-     * It is possible to apply new equalizer settings to a media player
-     * whether the media player is currently playing media or not.
-     *
-     * Invoking this method will immediately apply the new equalizer settings
-     * to the audio output of the currently playing media if there is any.
-     *
-     * If there is no currently playing media, the new equalizer settings
-     * will be applied later if and when new media is played.
-     *
-     * Equalizer settings will automatically be applied to subsequently
-     * played media.
-     *
-     * To disable the equalizer for a media player invoke this method passing
-     * NULL for the p_equalizer parameter.
-     *
-     * The media player does not keep a reference to the supplied equalizer
-     * so it is safe for an application to release the equalizer reference
-     * any time after this method returns.
-     *
-     * \param equalizer  The equalizer to be used by this media player
-     *
-     * \return true on success, false otherwise
-     *
-     * \version LibVLC 2.2.0 or later
-     */
-    bool setEqualizer(Equalizer& equalizer)
-    {
-        return libvlc_media_player_set_equalizer( *this, equalizer ) == 0;
-    }
-
-    ///
-    /// \brief unsetEqualizer disable equalizer for this media player
-    ///
-    /// \return true on success, false otherwise.
-    ///
-    bool unsetEqualizer()
-    {
-        return libvlc_media_player_set_equalizer( *this, nullptr ) == 0;
     }
 
     /**
@@ -916,22 +790,10 @@ public:
      *
      * \return Nothing. Errors are ignored (this is a design bug).
      */
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     void outputDeviceSet(const std::string& device_id)
     {
         libvlc_audio_output_device_set(*this, device_id.c_str());
     }
-#else
-    void outputDeviceSet(const std::string& module, const std::string& device_id)
-    {
-        libvlc_audio_output_device_set(*this, module.c_str(), device_id.c_str());
-    }
-
-    void outputDeviceSet(const std::string& device_id)
-    {
-        libvlc_audio_output_device_set(*this, nullptr, device_id.c_str());
-    }
-#endif
 
     /**
      * Toggle mute status.
@@ -994,74 +856,6 @@ public:
         return libvlc_audio_set_volume(*this, i_volume) == 0;
     }
 
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Get number of available audio tracks.
-     *
-     * \return the number of available audio tracks (int), or -1 if
-     * unavailable
-     */
-    int audioTrackCount()
-    {
-        return libvlc_audio_get_track_count(*this);
-    }
-
-    /**
-     * Get the description of available audio tracks.
-     *
-     * \return list with description of available audio tracks
-     */
-    std::vector<TrackDescription> audioTrackDescription()
-    {
-        libvlc_track_description_t* result = libvlc_audio_get_track_description( *this );
-        return getTracksDescription( result );
-    }
-
-    /**
-     * Get current audio track.
-     *
-     * \return the audio track ID or -1 if no active input.
-     */
-    int audioTrack()
-    {
-        return libvlc_audio_get_track(*this);
-    }
-
-    /**
-     * Set current audio track.
-     *
-     * \param i_track  the track ID (i_id field from track description)
-     */
-    bool setAudioTrack(int i_track)
-    {
-        return libvlc_audio_set_track(*this, i_track) == 0;
-    }
-
-    /**
-     * Get current audio channel.
-     *
-     * \return the audio channel
-     *
-     * \see libvlc_audio_output_channel_t
-     */
-    int channel()
-    {
-        return libvlc_audio_get_channel(*this);
-    }
-
-    /**
-     * Set current audio channel.
-     *
-     * \param channel  the audio channel,
-     *
-     * \see libvlc_audio_output_channel_t
-     */
-    bool setChannel(int channel)
-    {
-        return libvlc_audio_set_channel(*this, channel) == 0;
-    }
-
-#else // libvlc 4.0
     /**
      * Get current audio stereo mode.
      *
@@ -1101,7 +895,6 @@ public:
     {
         return libvlc_audio_set_mixmode(*this, mode) == 0;
     }
-#endif // libvlc 4.0
 
     /**
      * Get current audio delay.
@@ -1346,64 +1139,6 @@ public:
         libvlc_video_set_aspect_ratio( *this, ar.size() > 0 ? ar.c_str() : nullptr );
     }
 
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Get current video subtitle.
-     *
-     * \return the video subtitle selected, or -1 if none
-     */
-    int spu()
-    {
-        return libvlc_video_get_spu(*this);
-    }
-
-    /**
-     * Get the number of available video subtitles.
-     *
-     * \return the number of available video subtitles
-     */
-    int spuCount()
-    {
-        return libvlc_video_get_spu_count(*this);
-    }
-
-    /**
-     * Get the description of available video subtitles.
-     *
-     * \return list containing description of available video subtitles
-     */
-    std::vector<TrackDescription> spuDescription()
-    {
-        libvlc_track_description_t* result = libvlc_video_get_spu_description( *this );
-        return getTracksDescription( result );
-    }
-
-    /**
-     * Set new video subtitle.
-     *
-     * \param i_spu  video subtitle track to select (i_id from track
-     * description)
-     *
-     * \return 0 on success, -1 if out of range
-     */
-    int setSpu(int i_spu)
-    {
-        return libvlc_video_set_spu(*this, i_spu);
-    }
-#endif
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(3, 0, 0, 0)
-    /**
-     * Set new video subtitle file.
-     *
-     * \param psz_subtitle  new video subtitle file
-     */
-    bool setSubtitleFile(const std::string& psz_subtitle)
-    {
-        return libvlc_video_set_subtitle_file(*this, psz_subtitle.c_str()) != 0;
-    }
-#endif
-
     /**
      * Get the current subtitle delay. Positive values means subtitles are
      * being displayed later, negative values earlier.
@@ -1443,13 +1178,6 @@ public:
      *
      * \return list containing description of available titles
      */
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(3, 0, 0, 0)
-    std::vector<TrackDescription> titleDescription()
-    {
-        libvlc_track_description_t* result = libvlc_video_get_title_description( *this );
-        return getTracksDescription( result );
-    }
-#else
     std::vector<TitleDescription> titleDescription()
     {
         libvlc_title_description_t **titles;
@@ -1469,7 +1197,6 @@ public:
             res.emplace_back( ptr[i] );
         return res;
     }
-#endif
 
     /**
      * Get the description of available chapters for specific title.
@@ -1479,13 +1206,6 @@ public:
      * \return list containing description of available chapters for title
      * i_title
      */
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(3, 0, 0, 0)
-    std::vector<TrackDescription> chapterDescription(int i_title)
-    {
-        libvlc_track_description_t* result = libvlc_video_get_chapter_description( *this, i_title );
-        return getTracksDescription( result );
-    }
-#else
     std::vector<ChapterDescription> chapterDescription(int i_title)
     {
         libvlc_chapter_description_t **chapters;
@@ -1505,9 +1225,7 @@ public:
             res.emplace_back( ptr[i] );
         return res;
     }
-#endif
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     /**
      * Set/unset the video crop ratio.
      *
@@ -1580,30 +1298,6 @@ public:
     {
         libvlc_video_set_crop_border( *this, left, right, top, bottom );
     }
-#else
-    /**
-     * Get current crop filter geometry.
-     *
-     * \return the crop filter geometry or an empty string if unset
-     */
-    std::string cropGeometry()
-    {
-        auto str = wrapCStr( libvlc_video_get_crop_geometry(*this) );
-        if ( str == nullptr )
-            return {};
-        return str.get();
-    }
-
-    /**
-     * Set new crop filter geometry.
-     *
-     * \param psz_geometry new crop filter geometry (empty string to unset)
-     */
-    void setCropGeometry(const std::string& geometry)
-    {
-        libvlc_video_set_crop_geometry( *this, geometry.size() > 0 ? geometry.c_str() : nullptr );
-    }
-#endif
 
     /**
      * Get current teletext page requested.
@@ -1624,51 +1318,6 @@ public:
     {
         libvlc_video_set_teletext(*this, i_page);
     }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Get number of available video tracks.
-     *
-     * \return the number of available video tracks (int)
-     */
-    int videoTrackCount()
-    {
-        return libvlc_video_get_track_count(*this);
-    }
-
-    /**
-     * Get the description of available video tracks.
-     *
-     * \return list with description of available video tracks
-     */
-    std::vector<TrackDescription> videoTrackDescription()
-    {
-        libvlc_track_description_t* result = libvlc_video_get_track_description( *this );
-        return getTracksDescription( result );
-    }
-
-    /**
-     * Get current video track.
-     *
-     * \return the video track ID (int) or -1 if no active input
-     */
-    int videoTrack()
-    {
-        return libvlc_video_get_track(*this);
-    }
-
-    /**
-     * Set video track.
-     *
-     * \param i_track  the track ID (i_id field from track description)
-     *
-     * \return 0 on success, -1 if out of range
-     */
-    int setVideoTrack(int i_track)
-    {
-        return libvlc_video_set_track(*this, i_track);
-    }
-#endif
 
     /**
      * Take a snapshot of the current video window.
@@ -1701,19 +1350,11 @@ public:
      * \param mode      The deinterlace mode, or empty string for the current
      *                  or default filter.
      */
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
     void setDeinterlace(DeinterlaceState state, const std::string& mode)
     {
         libvlc_video_set_deinterlace(*this, static_cast<int>( state ),
                                      mode.empty() ? NULL : mode.c_str());
     }
-#else
-    void setDeinterlace(const std::string& mode)
-    {
-        libvlc_video_set_deinterlace(*this,
-                                     mode.empty() ? NULL : mode.c_str());
-    }
-#endif
 
     /**
      * Get an integer marquee option value
@@ -1726,23 +1367,6 @@ public:
     {
         return libvlc_video_get_marquee_int(*this, option);
     }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Get a string marquee option value
-     *
-     * \param option  marq option to get
-     *
-     * \see libvlc_video_marquee_string_option_t
-     */
-    std::string marqueeString(unsigned option)
-    {
-        auto str = wrapCStr( libvlc_video_get_marquee_string(*this, option) );
-        if ( str == nullptr )
-            return {};
-        return str.get();
-    }
-#endif
 
     /**
      * Enable, disable or set an integer marquee option
@@ -1874,7 +1498,6 @@ public:
         libvlc_video_set_adjust_float(*this, option, value);
     }
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
     /**
      * Add a slave to the current media player.
      *
@@ -1902,20 +1525,6 @@ public:
         return libvlc_video_update_viewpoint( *this,
             static_cast<const libvlc_video_viewpoint_t*>( &viewpoint ), b_absolute ) == 0;
     }
-
-    bool setRenderer( const RendererDiscoverer::Item& rendererItem )
-    {
-        return libvlc_media_player_set_renderer( *this, rendererItem ) == 0;
-    }
-
-    void unsetRenderer()
-    {
-        libvlc_media_player_set_renderer( *this, nullptr );
-    }
-
-#endif
-
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(4, 0, 0, 0)
 
     std::vector<MediaTrack> tracks( MediaTrack::Type type, bool selected )
     {
@@ -1956,28 +1565,6 @@ public:
         libvlc_media_player_unselect_track_type( *this,
                                     static_cast<libvlc_track_type_t>( type ) );
     }
-
-#endif
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-
-private:
-    std::vector<TrackDescription> getTracksDescription( libvlc_track_description_t* tracks ) const
-    {
-        if ( tracks == nullptr )
-            return {};
-        std::vector<TrackDescription> result;
-        auto p = tracks;
-        std::unique_ptr<libvlc_track_description_t, decltype(&libvlc_track_description_list_release)>
-                devicePtr( tracks, libvlc_track_description_list_release );
-        while ( p != nullptr )
-        {
-            result.emplace_back( p );
-            p = p->p_next;
-        }
-        return result;
-    }
-#endif
 
 private:
     std::shared_ptr<MediaPlayerEventManager> m_eventManager;

@@ -28,8 +28,6 @@
 #include "common.hpp"
 #include "Internal.hpp"
 #include "structures.hpp"
-#include "Dialog.hpp"
-#include "MediaDiscoverer.hpp"
 
 #include <string>
 #include <vector>
@@ -39,47 +37,15 @@
 namespace VLC
 {
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-using Question = libvlc_dialog_question_type;
-
-namespace DialogType
-{
-#if !defined(_MSC_VER) || _MSC_VER >= 1900
-    static constexpr Question normal = LIBVLC_DIALOG_QUESTION_NORMAL;
-    static constexpr Question warning = LIBVLC_DIALOG_QUESTION_WARNING;
-    static constexpr Question critical = LIBVLC_DIALOG_QUESTION_CRITICAL;
-#else
-    static const Question normal = LIBVLC_DIALOG_QUESTION_NORMAL;
-    static const Question warning = LIBVLC_DIALOG_QUESTION_WARNING;
-    static const Question critical = LIBVLC_DIALOG_QUESTION_CRITICAL;
-#endif
-}
-#endif
-
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-class Instance : protected CallbackOwner<8>, public Internal<libvlc_instance_t>
-#else
-class Instance : protected CallbackOwner<5>, public Internal<libvlc_instance_t>
-#endif
+class Instance : protected CallbackOwner<2>, public Internal<libvlc_instance_t>
 {
 private:
     enum class CallbackIdx : unsigned int
     {
         Exit = 0,
-        Log,
-        ErrorDisplay,
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-        LoginDisplay,
-        QuestionDisplay,
-        ProgressDisplay,
-        CancelDialog,
-        ProgressUpdate
-#endif
+        Log
     };
 
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-    std::shared_ptr<libvlc_dialog_cbs> m_callbacks_pointers;
-#endif
 public:
     /**
      * Create and initialize a libvlc instance. This functions accept a list
@@ -105,9 +71,6 @@ public:
      */
     Instance(int argc, const char *const * argv)
         : Internal{ libvlc_new( argc, argv ), libvlc_release }
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-          , m_callbacks_pointers { std::make_shared<libvlc_dialog_cbs>() }
-#endif
     {
     }
 
@@ -314,7 +277,6 @@ public:
         return res;
     }
 
-
     /**
      * Returns a list of video filters that are available.
      *
@@ -357,221 +319,6 @@ public:
         }
         return res;
     }
-
-#if LIBVLC_VERSION_INT < LIBVLC_VERSION(4, 0, 0, 0)
-    /**
-     * Gets a list of audio output devices for a given audio output module,
-     *
-     * \see Audio::outputDeviceSet() .
-     *
-     * \note Not all audio outputs support this. In particular, an empty
-     * (NULL) list of devices does imply that the specified audio output does
-     * not work.
-     *
-     * \note The list might not be exhaustive.
-     *
-     * \warning Some audio output devices in the list might not actually work
-     * in some circumstances. By default, it is recommended to not specify
-     * any explicit audio device.
-     *
-     * \param psz_aout  audio output name (as returned by
-     * Instance::audioOutputList() )
-     *
-     * \return A vector containing all audio output devices for this module
-     *
-     * \version LibVLC 2.1.0 or later.
-     */
-    std::vector<AudioOutputDeviceDescription> audioOutputDeviceList(const std::string& aout)
-    {
-        std::unique_ptr<libvlc_audio_output_device_t, decltype(&libvlc_audio_output_device_list_release)>
-                devices(  libvlc_audio_output_device_list_get( *this, aout.c_str() ), libvlc_audio_output_device_list_release );
-        if ( devices == nullptr )
-            return {};
-        std::vector<AudioOutputDeviceDescription> res;
-
-        for ( auto p = devices.get(); p != nullptr; p = p->p_next )
-            res.emplace_back( p );
-        return res;
-    }
-#endif
-
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-#if !defined(_MSC_VER) || _MSC_VER >= 1900
-    /**
-     * Called when an error message needs to be displayed.
-     *
-     * \param title title of the dialog
-     * \param text text of the dialog
-     */
-    using ErrorCb = void(std::string &&title, std::string &&text);
-    /**
-     *Called when a login dialog needs to be displayed.
-     *
-     *You can interact with this dialog by using the postLogin method on dialog to post an answer or the dismiss method to cancel this dialog.
-     *
-     *\note to receive this callack, CancelCb should not be NULL.
-     *\param dialog used to interact with the dialog
-     *\param title title of the dialog
-     *\param text text of the dialog
-     *\param defaultUserName user name that should be set on the user form
-     *\param askToStore if true, ask the user if he wants to save the credentials
-     */
-    using LoginCb = void(Dialog &&dialog, std::string &&title, std::string &&text, std::string &&defaultUserName, bool askToStore);
-    /**
-     * Called when a question dialog needs to be displayed
-     *
-     * You can interact with this dialog by using the postAction method on dialog
-     * to post an answer or dismiss method to cancel this dialog.
-     *
-     * \note to receive this callack, CancelCb should not be
-     * NULL.
-     *
-     * \param dialog used to interact with the dialog
-     * \param title title of the diaog
-     * \param text text of the dialog
-     * \param qtype question type (or severity) of the dialog
-     * \param cancel text of the cancel button
-     * \param action1 text of the first button, if NULL, don't display this
-     * button
-     * \param action2 text of the second button, if NULL, don't display
-     * this button
-     */
-    using QuestionCb = void(Dialog &&dialog, std::string &&title, std::string &&text, Question qType, std::string &&cancel, std::string &&action1, std::string &&action2);
-    /**
-     * Called when a progress dialog needs to be displayed
-     *
-     * If cancellable (cancel != NULL), you can cancel this dialog by
-     * calling the dismiss method on dialog
-     *
-     * \note to receive this callack, CancelCb and
-     * UpdtProgressCb should not be NULL.
-     *
-     * \param dialog used to interact with the dialog
-     * \param title title of the diaog
-     * \param text text of the dialog
-     * \param indeterminate true if the progress dialog is indeterminate
-     * \param position initial position of the progress bar (between 0.0 and
-     * 1.0)
-     * \param cancel text of the cancel button, if NULL the dialog is not
-     * cancellable
-     */
-    using DspProgressCb = void(Dialog &&dialog, std::string &&title, std::string &&text, bool intermediate, float position, std::string &&cancel);
-    /**
-     * Called when a displayed dialog needs to be cancelled
-     *
-     * The implementation must call the method dismiss on dialog to really release
-     * the dialog.
-     *
-     * \param dialog used to interact with the dialog
-     */
-    using CancelCb = void(Dialog &&dialog);
-    /**
-     * Called when a progress dialog needs to be updated
-     *
-     * \param dialog used to interact with the dialog
-     * \param position osition of the progress bar (between 0.0 and 1.0)
-     * \param text new text of the progress dialog
-     */
-    using UpdtProgressCb = void(Dialog &&dialog, float position, std::string &&text);
-#else
-    typedef void (*ErrorCb)(std::string &&title, std::string &&text);
-    typedef void (*LoginCb)(Dialog &&dialog, std::string &&title, std::string &&text, std::string &&defaultUserName, bool askToStore);
-    typedef void (*QuestionCb)(Dialog &&dialog, std::string &&title, std::string &&text, Question qType, std::string &&cancel, std::string &&action1, std::string &&action2);
-    typedef void (*DspProgressCb)(Dialog &&dialog, std::string &&title, std::string &&text, bool intermediate, float position, std::string &&cancel);
-    typedef void (*CancelCb)(Dialog &&dialog);
-    typedef void (*UpdtProgressCb)(Dialog &&dialog, float position, std::string &&text);
-#endif
-    /**
-     * Replaces all the dialog callbacks for this Instance instance
-     *
-     * \param error   lambda callback that will get called when an error message needs to be displayed.     \see ErrorCb
-     * \param login   lambda callback that will get called when a login dialog needs to be displayed. \see LoginCb
-     * \param question   lambda callback that will get called when a question dialog needs to be displayed. \see QuestionCb
-     * \param dspProgress   lambda callback that will get called when a progress dialog needs to be displayed. \see DspProgressCb
-     * \param cancel   lambda callback that will get called when a displayed dialog needs to be cancelled. \see CancelCb
-     * \param updtProgress   lambda callback that will get called when a progress dialog needs to be updated. \see UpdtProgressCb
-     */
-    template <class Error, class Login, class Question, class DspProgress, class Cancel, class UpdtProgress>
-    void setDialogHandlers(Error&& error, Login&& login, Question&& question, DspProgress&& dspProgress, Cancel &&cancel, UpdtProgress &&updtProgress)
-    {
-#if !defined(_MSC_VER) || _MSC_VER >= 1900
-        static_assert(signature_match_or_nullptr<Error, ErrorCb>::value, "Mismatched error display callback prototype");
-        static_assert(signature_match_or_nullptr<Login, LoginCb>::value, "Mismatched login display callback prototype");
-        static_assert(signature_match_or_nullptr<Question, QuestionCb>::value, "Mismatched question display callback prototype");
-        static_assert(signature_match_or_nullptr<DspProgress, DspProgressCb>::value, "Mismatched progress display callback prototype");
-        static_assert(signature_match_or_nullptr<Cancel, CancelCb>::value, "Mismatched cancel callback prototype");
-        static_assert(signature_match_or_nullptr<UpdtProgress, UpdtProgressCb>::value, "Mismatched update progress callback prototype");
-#endif
-        libvlc_dialog_cbs tmp = {
-            CallbackWrapper<(unsigned)CallbackIdx::ErrorDisplay, decltype(libvlc_dialog_cbs::pf_display_error)>::wrap(*m_callbacks, std::forward<Error>(error)),
-            CallbackWrapper<(unsigned)CallbackIdx::LoginDisplay, decltype(libvlc_dialog_cbs::pf_display_login)>::wrap(*m_callbacks, std::forward<Login>(login)),
-            CallbackWrapper<(unsigned)CallbackIdx::QuestionDisplay, decltype(libvlc_dialog_cbs::pf_display_question)>::wrap(*m_callbacks, std::forward<Question>(question)),
-            CallbackWrapper<(unsigned)CallbackIdx::ProgressDisplay, decltype(libvlc_dialog_cbs::pf_display_progress)>::wrap(*m_callbacks, std::forward<DspProgress>(dspProgress)),
-            CallbackWrapper<(unsigned)CallbackIdx::CancelDialog, decltype(libvlc_dialog_cbs::pf_cancel)>::wrap(*m_callbacks, std::forward<Cancel>(cancel)),
-            CallbackWrapper<(unsigned)CallbackIdx::ProgressUpdate, decltype(libvlc_dialog_cbs::pf_update_progress)>::wrap(*m_callbacks, std::forward<UpdtProgress>(updtProgress))
-        };
-        m_callbacks_pointers = std::make_shared<libvlc_dialog_cbs>(tmp);
-        libvlc_dialog_set_callbacks(*this, m_callbacks_pointers.get(), m_callbacks.get());
-    }
-
-    /**
-     * Unset all callbacks
-     */
-    void unsetDialogHandlers()
-    {
-        memset(m_callbacks_pointers.get(), 0, sizeof(libvlc_dialog_cbs));
-        std::fill(m_callbacks->begin() + 2, m_callbacks->end(), nullptr);
-        libvlc_dialog_set_callbacks(*this, nullptr, nullptr);
-    }
-
-#if LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
-    /**
-     * Get media discoverer services by category
-     *
-     * \version LibVLC 3.0.0 and later.
-     *
-     * \param category  The category of services to fetch
-     *
-     * \return A vector containing the available media discoverers
-     */
-    std::vector<MediaDiscoverer::Description> mediaDiscoverers(MediaDiscoverer::Category category)
-    {
-        libvlc_media_discoverer_description_t** pp_descs;
-        auto nbSd = libvlc_media_discoverer_list_get( *this, static_cast<libvlc_media_discoverer_category_t>( category ),
-                                                      &pp_descs );
-        if ( nbSd == 0 )
-            return {};
-        auto releaser = [nbSd](libvlc_media_discoverer_description_t** ptr) {
-            libvlc_media_discoverer_list_release( ptr, nbSd );
-        };
-        std::unique_ptr<libvlc_media_discoverer_description_t*, decltype(releaser)> descPtr( pp_descs, releaser );
-        std::vector<MediaDiscoverer::Description> res;
-        res.reserve( nbSd );
-        for ( auto i = 0u; i < nbSd; ++i )
-            res.emplace_back( pp_descs[i]->psz_name, pp_descs[i]->psz_longname, pp_descs[i]->i_cat );
-        return res;
-    }
-
-    std::vector<RendererDiscovererDescription> rendererDiscoverers()
-    {
-        libvlc_rd_description_t** pp_descs;
-        auto nbSd = libvlc_renderer_discoverer_list_get(*this, &pp_descs);
-        if (nbSd == 0)
-            return {};
-        auto releaser = [nbSd](libvlc_rd_description_t** ptr) {
-            libvlc_renderer_discoverer_list_release(ptr, nbSd);
-        };
-        std::unique_ptr<libvlc_rd_description_t*, decltype(releaser)> descPtr(pp_descs, releaser);
-        std::vector<RendererDiscovererDescription> res;
-        res.reserve(nbSd);
-        for (auto i = 0u; i < nbSd; ++i)
-            res.emplace_back( pp_descs[i] );
-        return res;
-    }
-
-#endif
-
-#endif // LIBVLC_VERSION_INT >= LIBVLC_VERSION(3, 0, 0, 0)
 };
 
 } // namespace VLC
