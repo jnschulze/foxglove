@@ -1,18 +1,18 @@
-#include "single_thread_dispatcher.h"
+#include "main_thread_dispatcher.h"
 
 #include <cassert>
 
 namespace foxglove {
 namespace windows {
 
-SingleThreadDispatcher::SingleThreadDispatcher()
+MainThreadDispatcher::MainThreadDispatcher()
     : terminated_(false),
       message_window_(
           std::make_unique<MessageWindow>([this]() { ProcessTasks(); })) {}
 
-SingleThreadDispatcher::~SingleThreadDispatcher() { assert(terminated_); }
+MainThreadDispatcher::~MainThreadDispatcher() { assert(terminated_); }
 
-void SingleThreadDispatcher::Terminate() {
+void MainThreadDispatcher::Terminate() {
   {
     // we need to release the lock before calling ProcessTasks
     const std::lock_guard<std::mutex> lock(tasks_mutex_);
@@ -26,7 +26,7 @@ void SingleThreadDispatcher::Terminate() {
   ProcessTasks();
 }
 
-void SingleThreadDispatcher::Dispatch(Task task) {
+void MainThreadDispatcher::Dispatch(Task task) {
   if (RunsTasksOnCurrentThread()) {
     task();
   } else {
@@ -39,7 +39,7 @@ void SingleThreadDispatcher::Dispatch(Task task) {
   }
 }
 
-void SingleThreadDispatcher::ProcessTasks() {
+void MainThreadDispatcher::ProcessTasks() {
   assert(thread_checker_.IsCreationThreadCurrent());
   std::deque<Task> current_tasks;
   {

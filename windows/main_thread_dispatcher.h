@@ -5,19 +5,19 @@
 #include <mutex>
 
 #include "message_window.h"
-#include "thread_checker.h"
+#include "base/thread_checker.h"
 
 namespace foxglove {
 namespace windows {
 
-// SingleThreadDispatcher
+// MainThreadDispatcher
 // All task enqueued will be run on the thread where the dispatcher is created.
-class SingleThreadDispatcher {
+class MainThreadDispatcher {
  public:
   using Task = std::function<void()>;
 
-  SingleThreadDispatcher();
-  ~SingleThreadDispatcher();
+  MainThreadDispatcher();
+  ~MainThreadDispatcher();
 
   void Dispatch(Task task);
   void Terminate();

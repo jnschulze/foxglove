@@ -69,8 +69,8 @@ if (NOT EXISTS "${LIBVLC_SOURCE}")
 endif()
 
 add_library(${LIBRARY_NAME} STATIC
-  events.cc
   base/task_queue.cc
+  events.cc
   vlc/vlc_environment.cc
   vlc/vlc_media_list_player.cc
   vlc/vlc_player.cc
@@ -78,8 +78,6 @@ add_library(${LIBRARY_NAME} STATIC
   vlc/vlc_pixel_buffer_output.cc
   vlc/vlc_d3d11_context.cc
   vlc/vlc_d3d11_output.cc
-  base/single_thread_dispatcher.cc
-  base/message_window.cc
 )
 
 add_dependencies(${LIBRARY_NAME} LIBVLC_EXTRACT)

@@ -13,6 +13,8 @@ add_library(${PLUGIN_NAME} SHARED
   "foxglove_plugin.cc"
   "foxglove_plugin.h"
   "include/foxglove/foxglove_plugin_c_api.h"
+  "main_thread_dispatcher.cc"
+  "message_window.cc"
   "method_channel_handler.cc"
   "player_bridge.cc"
   "resource_registry.cc"
