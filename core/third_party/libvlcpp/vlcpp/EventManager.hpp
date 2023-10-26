@@ -919,50 +919,6 @@ class MediaListEventManager : public EventManager
         }
 };
 
-/**
- * @brief The MediaListPlayerEventManager class
- * Those events aren't sent by VLC so far.
- */
-class MediaListPlayerEventManager : public EventManager
-{
-    private:
-        MediaListPlayer m_mlp;
-    public:
-        MediaListPlayerEventManager(InternalPtr ptr, MediaListPlayer mlp)
-            : EventManager( ptr )
-            , m_mlp( std::move( mlp ) )
-        {
-        }
-        ~MediaListPlayerEventManager()
-        {
-            m_lambdas.clear();
-        }
-
-        template <typename Func>
-        RegisteredEvent onPlayed(Func&& f)
-        {
-            return handle(libvlc_MediaListPlayerPlayed, std::forward<Func>( f ) );
-        }
-
-        template <typename Func>
-        RegisteredEvent onNextItemSet( Func&& f )
-        {
-            EXPECT_SIGNATURE(void(MediaPtr));
-            return handle(libvlc_MediaListPlayerNextItemSet, std::forward<Func>( f ), [](const libvlc_event_t* e, void* data)
-            {
-                auto callback = static_cast<DecayPtr<Func>>( data );
-                auto media = e->u.media_list_player_next_item_set.item;
-                (*callback)( media != nullptr ? std::make_shared<Media>( media, true ) : nullptr );
-            });
-        }
-
-        template <typename Func>
-        RegisteredEvent onStopped( Func&& f )
-        {
-            return handle(libvlc_MediaListPlayerStopped, std::forward<Func>( f ) );
-        }
-};
-
 }
 
 #endif // LIBVLC_EVENTMANAGER_HPP
