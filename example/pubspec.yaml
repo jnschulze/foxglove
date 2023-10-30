@@ -18,6 +18,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  logging: ^1.2.0
   foxglove:
     # When depending on this package from a real application you should use:
     #   foxglove: ^x.y.z
