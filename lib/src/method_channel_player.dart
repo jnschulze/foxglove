@@ -55,6 +55,7 @@ extension on Playlist {
 typedef DisposeCallback = Future<void> Function();
 
 class MethodChannelPlayer extends PlayerPlatform {
+  final Logger _logger = Logger("Foxglove:MethodChannelPlayer");
   static final MethodChannel _channel = const MethodChannel('foxglove')
     ..invokeMethod('init');
 
@@ -73,21 +74,30 @@ class MethodChannelPlayer extends PlayerPlatform {
   @override
   Future<Player> createPlayer(
       {int? environmentId, List<String>? environmentArgs}) async {
-    final result = await _channel.invokeMapMethod(
-        'createPlayer', <String, dynamic>{
-      'environmentId': environmentId,
-      'environmentArgs': environmentArgs
-    });
+    try {
+      _logger.fine(
+          "Creating player with environmentId `$environmentId` and args `$environmentArgs`");
+      final result = await _channel.invokeMapMethod(
+          'createPlayer', <String, dynamic>{
+        'environmentId': environmentId,
+        'environmentArgs': environmentArgs
+      });
 
-    final playerId = result!['player_id'] as int;
-    final textureId = result['texture_id'] as int;
-    return _PlayerImpl(
-        platform: this,
-        id: playerId,
-        textureId: textureId,
-        disposeCallback: () async {
-          await _disposePlayer(playerId);
-        });
+      final playerId = result!['player_id'] as int;
+      final textureId = result['texture_id'] as int;
+
+      _logger.fine('Created player with id: $playerId');
+      return _PlayerImpl(
+          platform: this,
+          id: playerId,
+          textureId: textureId,
+          disposeCallback: () async {
+            await _disposePlayer(playerId);
+          });
+    } catch (e) {
+      _logger.severe("Error creating player: $e");
+      rethrow;
+    }
   }
 
   Future<void> _disposePlayer(int id) async {
