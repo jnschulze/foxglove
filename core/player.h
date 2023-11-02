@@ -40,15 +40,15 @@ class Player : public VideoOutputFactory {
 
   virtual std::unique_ptr<Playlist> CreatePlaylist() = 0;
 
-  virtual void Open(std::unique_ptr<Media> media) = 0;
-  virtual void Open(std::unique_ptr<Playlist> playlist) = 0;
-  virtual void Play() = 0;
+  virtual bool Open(std::unique_ptr<Media> media) = 0;
+  virtual bool Open(std::unique_ptr<Playlist> playlist) = 0;
+  virtual bool Play() = 0;
   virtual void Pause() = 0;
   virtual void Stop() = 0;
   virtual void SeekPosition(float position) = 0;
   virtual void SeekTime(int64_t time) = 0;
-  virtual void Next() = 0;
-  virtual void Previous() = 0;
+  virtual bool Next() = 0;
+  virtual bool Previous() = 0;
   virtual void SetRate(float rate) = 0;
   virtual void SetPlaylistMode(PlaylistMode playlist_mode) = 0;
   virtual void SetVolume(double volume) = 0;
