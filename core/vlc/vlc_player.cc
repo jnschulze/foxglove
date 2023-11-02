@@ -376,9 +376,6 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
         case PlaybackState::kEnded:
           media_state_.position = 0;
           break;
-        case PlaybackState::kError:
-          media_state_.position = 0;
-          break;
         default:
           break;
       }
