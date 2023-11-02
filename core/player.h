@@ -24,7 +24,6 @@ class PlayerEventDelegate {
   virtual void OnVolumeChanged(double volume) {}
   virtual void OnMute(bool is_muted) {}
   virtual void OnVideoDimensionsChanged(int32_t width, int32_t height) {}
-  virtual void OnError(int32_t error_code, std::string error_message) {}
 };
 
 class Player : public VideoOutputFactory {
