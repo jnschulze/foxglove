@@ -69,24 +69,24 @@ void VlcMediaListPlayer::SetPlaylistMode(PlaylistMode playlist_mode) {
   playlist_mode_ = playlist_mode;
 }
 
-void VlcMediaListPlayer::PlayItemAtIndex(int index) {
+bool VlcMediaListPlayer::PlayItemAtIndex(int index) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (HasPlaylist()) {
-    PlayItemAtIndexInternal(index);
+    return PlayItemAtIndexInternal(index);
   }
+  return false;
 }
 
-void VlcMediaListPlayer::Play() {
+bool VlcMediaListPlayer::Play() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!HasPlaylist()) {
-    return;
+    return false;
   }
   ignore_player_events_ = false;
   if (!current_index_.has_value()) {
-    PlayItemAtIndexInternal(0);
-    return;
+    return PlayItemAtIndexInternal(0);
   }
-  libvlc_media_player_play(media_player_);
+   return libvlc_media_player_play(media_player_) == 0;
 }
 
 void VlcMediaListPlayer::Pause() {
@@ -109,50 +109,51 @@ bool VlcMediaListPlayer::StopAsync() {
   return is_stopping;
 }
 
-void VlcMediaListPlayer::Next() {
+bool VlcMediaListPlayer::Next() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!HasPlaylist()) {
-    return;
+    return false;
   }
-  PlayItemAtRelativePosition(1, true);
+  return PlayItemAtRelativePosition(1, true);
 }
 
-void VlcMediaListPlayer::Previous() {
+bool VlcMediaListPlayer::Previous() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!HasPlaylist()) {
-    return;
+    return false;
   }
-  PlayItemAtRelativePosition(-1, true);
+  return PlayItemAtRelativePosition(-1, true);
 }
 
-void VlcMediaListPlayer::PlayItemAtIndexInternal(int index) {
+bool VlcMediaListPlayer::PlayItemAtIndexInternal(int index) {
   auto media_list = vlc_media_list();
   if (!media_list) {
-    return;
+    return false;
   }
 
   libvlc_media_list_lock(media_list);
   int count = libvlc_media_list_count(media_list);
   if (index >= count) {
     libvlc_media_list_unlock(media_list);
-    return;
+    return false;
   }
 
-  StartPlayback(index);
+  auto success = StartPlayback(index);
   libvlc_media_list_unlock(media_list);
+  return success;
 }
 
-void VlcMediaListPlayer::PlayItemAtRelativePosition(int pos, bool manual) {
+bool VlcMediaListPlayer::PlayItemAtRelativePosition(int pos, bool manual) {
   auto media_list = vlc_media_list();
   if (!media_list) {
-    return;
+    return false;
   }
 
   libvlc_media_list_lock(media_list);
   auto count = libvlc_media_list_count(media_list);
   if (count == 0) {
     libvlc_media_list_unlock(media_list);
-    return;
+    return false;
   }
 
   auto current_index = current_index_.value_or(0);
@@ -172,17 +173,18 @@ void VlcMediaListPlayer::PlayItemAtRelativePosition(int pos, bool manual) {
   if (!index.has_value()) {
     // TODO: Emit an event that the playlist is done.
     libvlc_media_list_unlock(media_list);
-    return;
+    return false;
   }
 
-  StartPlayback(index.value());
+  auto success = StartPlayback(index.value());
   libvlc_media_list_unlock(media_list);
+  return success;
 }
 
-void VlcMediaListPlayer::StartPlayback(int index) {
+bool VlcMediaListPlayer::StartPlayback(int index) {
   auto media = libvlc_media_list_item_at_index(vlc_media_list(), index);
   if (!media) {
-    return;
+    return false;
   }
 
   current_index_ = index;
@@ -192,7 +194,7 @@ void VlcMediaListPlayer::StartPlayback(int index) {
   ignore_player_events_ = false;
 
   libvlc_media_release(media);
-  libvlc_media_player_play(media_player_);
+  return libvlc_media_player_play(media_player_) == 0;
 }
 
 }  // namespace foxglove

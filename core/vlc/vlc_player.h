@@ -81,10 +81,10 @@ class VlcPlayer : public Player {
 
   std::unique_ptr<Playlist> CreatePlaylist() override;
 
-  void Open(std::unique_ptr<Media> media) override;
-  void Open(std::unique_ptr<Playlist> playlist) override;
+  bool Open(std::unique_ptr<Media> media) override;
+  bool Open(std::unique_ptr<Playlist> playlist) override;
 
-  void Play() override;
+  bool Play() override;
   void Pause() override;
   void Stop() override;
   void StopSync(
@@ -93,8 +93,8 @@ class VlcPlayer : public Player {
   void SeekTime(int64_t time) override;
   void SetRate(float rate);
 
-  void Next() override;
-  void Previous() override;
+  bool Next() override;
+  bool Previous() override;
 
   void SetPlaylistMode(PlaylistMode playlist_mode) override;
   void SetVolume(double volume) override;
@@ -106,6 +106,7 @@ class VlcPlayer : public Player {
 
  private:
   typedef std::function<void()> VoidCallback;
+  typedef std::function<bool()> BoolCallback;
   VlcMediaState media_state_;
   VlcPlayerState state_;
   std::mutex op_mutex_;
@@ -123,8 +124,8 @@ class VlcPlayer : public Player {
   std::shared_ptr<VlcMediaListPlayer> media_list_player_;
   std::unique_ptr<VLC::MediaPlayerEventManager> player_event_manager_;
 
-  void OpenInternal(std::unique_ptr<VlcPlaylist> playlist, bool is_playlist);
-  void PlayInternal();
+  bool OpenInternal(std::unique_ptr<VlcPlaylist> playlist, bool is_playlist);
+  bool PlayInternal();
   void PauseInternal();
   bool StopInternal();
   void StopSyncInternal(
@@ -132,7 +133,9 @@ class VlcPlayer : public Player {
   void SetPlaylistModeInternal(PlaylistMode playlist_mode);
   void OnPlaylistUpdated();
 
+
   void SafeInvoke(VoidCallback callback);
+  bool SafeInvokeBool(BoolCallback callback);
 
   void SetupEventHandlers();
   void OnPlay();

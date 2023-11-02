@@ -43,6 +43,7 @@ VlcPlayer::~VlcPlayer() { Shutdown(); }
 void VlcPlayer::Shutdown() {
   PLAYER_LOG("Shutting down");
 
+ 
   if (shutting_down_) {
     return;
   }
@@ -57,6 +58,7 @@ void VlcPlayer::Shutdown() {
   }
 
   media_list_player_->SetPlaylist(nullptr);
+
 }
 
 std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
@@ -93,28 +95,30 @@ std::unique_ptr<Playlist> VlcPlayer::CreatePlaylist() {
   return std::make_unique<VlcPlaylist>();
 }
 
-void VlcPlayer::Open(std::unique_ptr<Media> media) {
+bool VlcPlayer::Open(std::unique_ptr<Media> media) {
   auto playlist = std::make_unique<VlcPlaylist>();
   playlist->Add(std::move(media));
 
   {
     std::lock_guard<std::mutex> lock(op_mutex_);
-    OpenInternal(std::move(playlist), false);
+    return OpenInternal(std::move(playlist), false);
   }
+  return false;
 }
 
-void VlcPlayer::Open(std::unique_ptr<Playlist> playlist) {
+bool VlcPlayer::Open(std::unique_ptr<Playlist> playlist) {
   if (auto vlc_playlist =
           unique_pointer_cast<VlcPlaylist>(std::move(playlist))) {
     std::lock_guard<std::mutex> lock(op_mutex_);
-    OpenInternal(std::move(vlc_playlist), true);
+    return OpenInternal(std::move(vlc_playlist), true);
   }
+  return false;
 }
 
-void VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
+bool VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
                              bool is_playlist) {
   if (!IsValid()) {
-    return;
+    return false;
   }
 
   auto old_playlist = media_list_player_->playlist();
@@ -129,6 +133,7 @@ void VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
 
   playlist->OnUpdate([this]() { OnPlaylistUpdated(); });
   media_list_player_->SetPlaylist(std::move(playlist));
+  return true;
 }
 
 void VlcPlayer::OnPlaylistUpdated() {
@@ -136,14 +141,15 @@ void VlcPlayer::OnPlaylistUpdated() {
   // LoadPlaylist();
 }
 
-void VlcPlayer::Play() {
+bool VlcPlayer::Play() {
   std::lock_guard<std::mutex> lock(op_mutex_);
   if (IsValid()) {
-    PlayInternal();
+    return PlayInternal();
   }
+  return false;
 }
 
-void VlcPlayer::PlayInternal() { media_list_player_->Play(); }
+bool VlcPlayer::PlayInternal() { return media_list_player_->Play(); }
 
 void VlcPlayer::Pause() {
   std::lock_guard<std::mutex> lock(op_mutex_);
@@ -241,12 +247,12 @@ void VlcPlayer::SetRate(float rate) {
   SafeInvoke([this, rate]() { media_player_.setRate(rate); });
 }
 
-void VlcPlayer::Next() {
-  SafeInvoke([this]() { media_list_player_->Next(); });
+bool VlcPlayer::Next() {
+  return SafeInvokeBool([this]() { return media_list_player_->Next(); });
 }
 
-void VlcPlayer::Previous() {
-  SafeInvoke([this]() { media_list_player_->Previous(); });
+bool VlcPlayer::Previous() {
+  return SafeInvokeBool([this]() -> bool { return media_list_player_->Previous(); });
 }
 
 void VlcPlayer::SetPlaylistMode(PlaylistMode mode) {
@@ -279,12 +285,18 @@ void VlcPlayer::SafeInvoke(VoidCallback callback) {
   }
 }
 
+bool VlcPlayer::SafeInvokeBool(BoolCallback callback){
+  const std::lock_guard<std::mutex> lock(op_mutex_);
+  if (IsValid()) {
+    return callback();
+  }
+  return false;
+}
+
 void VlcPlayer::SetupEventHandlers() {
   player_event_manager_ = std::make_unique<VLC::MediaPlayerEventManager>(
       media_player_.eventManager());
 
-  player_event_manager_->onEncounteredError(
-      []() { std::cerr << "Encountered error" << std::endl; });
 
   player_event_manager_->onNothingSpecial(
       [this] { HandleVlcState(PlaybackState::kNone); });
@@ -303,6 +315,9 @@ void VlcPlayer::SetupEventHandlers() {
 
   player_event_manager_->onStopped(
       [this] { HandleVlcState(PlaybackState::kStopped); });
+
+  player_event_manager_->onEncounteredError(
+      [this] { HandleVlcState(PlaybackState::kError); });
 
   player_event_manager_->onMediaChanged(
       [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
@@ -359,6 +374,9 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
           std::cerr << "Video stopped" << std::endl;
           break;
         case PlaybackState::kEnded:
+          media_state_.position = 0;
+          break;
+        case PlaybackState::kError:
           media_state_.position = 0;
           break;
         default:

@@ -83,6 +83,7 @@ constexpr auto kEventValue = "value";
 
 constexpr auto kErrorCodeBadArgs = "invalid_arguments";
 constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
+constexpr auto kErrorVlc = "vlc_error";
 
 enum Events : int32_t {
   kNone,
@@ -209,9 +210,13 @@ void PlayerBridge::HandleMethodCall(
                          [player = player_, media_ptr = media.release(),
                           autostart](MethodResult result) {
                            std::unique_ptr<Media> media(media_ptr);
-                           player->Open(std::move(media));
+                           if(!player->Open(std::move(media))){
+                              return result->Error(kErrorVlc, "Failed to open media");
+                           }
                            if (autostart) {
-                             player->Play();
+                             if(!player->Play()){
+                               return result->Error(kErrorVlc, "Failed to play media");
+                             }
                            }
                            result->Success();
                          });
@@ -226,10 +231,16 @@ void PlayerBridge::HandleMethodCall(
                        [player = player_, playlist_ptr = playlist.release(),
                         mode, autostart](MethodResult result) {
                          std::unique_ptr<Playlist> playlist(playlist_ptr);
-                         player->Open(std::move(playlist));
+                         if(!player->Open(std::move(playlist))){
+                              result->Error(kErrorVlc, "Failed to open playlist");
+                              return;
+                         }
                          player->SetPlaylistMode(mode);
                          if (autostart) {
-                           player->Play();
+                           if(!player->Play()){
+                              result->Error(kErrorVlc, "Failed to play playlist");
+                              return;
+                           }
                          }
                          result->Success();
                        });
@@ -241,7 +252,9 @@ void PlayerBridge::HandleMethodCall(
 
   if (method_name.compare(kMethodPlay) == 0) {
     return Enqueue(std::move(result), [player = player_](MethodResult result) {
-      player->Play();
+      if(!player->Play()){
+        result->Error(kErrorVlc, "Failed to start player");
+      }
       result->Success();
     });
   }
@@ -432,6 +445,8 @@ void PlayerBridge::OnVideoDimensionsChanged(int32_t width, int32_t height) {
   });
   EmitEvent(event);
 }
+
+
 
 }  // namespace windows
 }  // namespace foxglove

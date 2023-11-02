@@ -25,12 +25,12 @@ class VlcMediaListPlayer
   void SetMediaPlayer(VLC::MediaPlayer& player);
   void SetPlaylist(std::unique_ptr<VlcPlaylist> playlist);
   void SetPlaylistMode(PlaylistMode playlist_mode);
-  void PlayItemAtIndex(int index);
-  void Play();
+  bool PlayItemAtIndex(int index);
+  bool Play();
   void Pause();
   bool StopAsync();
-  void Next();
-  void Previous();
+  bool Next();
+  bool Previous();
 
   VlcPlaylist* playlist() const { return playlist_.get(); }
 
@@ -47,9 +47,9 @@ class VlcMediaListPlayer
 
   void SubscribePlayerEvents();
   void OnMediaPlayerStopping();
-  void PlayItemAtIndexInternal(int index);
-  void PlayItemAtRelativePosition(int pos, bool manual = false);
-  void StartPlayback(int index);
+  bool PlayItemAtIndexInternal(int index);
+  bool PlayItemAtRelativePosition(int pos, bool manual = false);
+  bool StartPlayback(int index);
   void ApplyPendingSeek();
 
   inline libvlc_media_list_t* vlc_media_list() {
