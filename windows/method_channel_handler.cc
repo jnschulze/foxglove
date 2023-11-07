@@ -259,7 +259,7 @@ void MethodChannelHandler::DisposePlayer(
 
 void MethodChannelHandler::DestroyPlayers() {
   registry_->players()->EraseAll([this](Player* player) {
-    auto is_unregistering = UnregisterChannelHandlers(player);
+    [[maybe_unused]] auto is_unregistering = UnregisterChannelHandlers(player);
     // TODO
     // We currently don't unregister channels if the plugin is
     // being terminated (see https://github.com/flutter/flutter/issues/118611)
