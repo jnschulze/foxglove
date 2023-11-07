@@ -50,6 +50,12 @@ class MethodChannelHandler {
   std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher_;
 
   int64_t CreateVideoOutput(Player* player);
+
+  void DestroyPlayers();
+
+  // Asynchronously unregisters channel handlers.
+  // Returns true if the callback, if provided, is guaranteed to be invoked.
+  bool UnregisterChannelHandlers(Player* player, Closure callback = nullptr);
 };
 }  // namespace windows
 }  // namespace foxglove

@@ -70,6 +70,22 @@ std::unique_ptr<Player> PlayerRegistry::RemovePlayer(int64_t player_id) {
   return player;
 }
 
+void PlayerRegistry::Visit(VisitPlayerCallback visitor) {
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  for (const auto& kvp : items_) {
+    visitor(kvp.second.get());
+  }
+}
+
+void PlayerRegistry::EraseAll(VisitPlayerCallback visitor) {
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  auto it = items_.begin();
+  while (it != items_.end()) {
+    visitor(it->second.get());
+    it = items_.erase(it);
+  }
+}
+
 size_t PlayerRegistry::Count() {
   std::lock_guard<std::mutex> lock(map_mutex_);
   return items_.size();

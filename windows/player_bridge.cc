@@ -117,20 +117,13 @@ PlayerBridge::PlayerBridge(
       std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
           messenger, event_channel_name,
           &flutter::StandardMethodCodec::GetInstance());
-
-  std::promise<void> promise;
-  RegisterChannelHandlers([&]() { promise.set_value(); });
-  promise.get_future().wait();
 }
 
-PlayerBridge::~PlayerBridge() {
-  std::promise<void> promise;
-  UnregisterChannelHandlers([&]() { promise.set_value(); });
-  promise.get_future().wait();
-}
+PlayerBridge::~PlayerBridge() { assert(!event_sink_); }
 
-void PlayerBridge::RegisterChannelHandlers(VoidCallback callback) {
+void PlayerBridge::RegisterChannelHandlers(Closure callback) {
   main_thread_dispatcher_->Dispatch([this, callback]() {
+    assert(IsMessengerValid());
     method_channel_->SetMethodCallHandler(
         [this](const auto& call, auto result) {
           HandleMethodCall(call, std::move(result));
@@ -141,15 +134,13 @@ void PlayerBridge::RegisterChannelHandlers(VoidCallback callback) {
         [this](const flutter::EncodableValue* arguments,
                std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
                    events) {
-          event_sink_ = std::move(events);
+          SetEventSink(std::move(events));
           return nullptr;
         },
         [this](const flutter::EncodableValue* arguments) {
-          const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-          event_sink_.reset();
+          SetEventSink(nullptr);
           return nullptr;
         });
-
     event_channel_->SetStreamHandler(std::move(handler));
 
     if (callback) {
@@ -158,7 +149,13 @@ void PlayerBridge::RegisterChannelHandlers(VoidCallback callback) {
   });
 }
 
-void PlayerBridge::UnregisterChannelHandlers(VoidCallback callback) {
+bool PlayerBridge::UnregisterChannelHandlers(Closure callback) {
+  SetEventSink(nullptr);
+
+  if (!IsMessengerValid()) {
+    return false;
+  }
+
   main_thread_dispatcher_->Dispatch([this, callback]() {
     // Channel handlers must not be unset during plugin destruction
     // See https://github.com/flutter/flutter/issues/118611
@@ -171,6 +168,14 @@ void PlayerBridge::UnregisterChannelHandlers(VoidCallback callback) {
       callback();
     }
   });
+
+  return true;
+}
+
+void PlayerBridge::SetEventSink(
+    std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink) {
+  const std::lock_guard<std::mutex> lock(event_sink_mutex_);
+  event_sink_ = std::move(event_sink);
 }
 
 void PlayerBridge::Enqueue(
@@ -206,20 +211,20 @@ void PlayerBridge::HandleMethodCall(
               channels::TryGetMapElement<flutter::EncodableMap>(map, "media")) {
         auto media = TryCreateMedia(media_map);
         if (media) {
-          return Enqueue(std::move(result),
-                         [player = player_, media_ptr = media.release(),
-                          autostart](MethodResult result) {
-                           std::unique_ptr<Media> media(media_ptr);
-                           if(!player->Open(std::move(media))){
-                              return result->Error(kErrorVlc, "Failed to open media");
-                           }
-                           if (autostart) {
-                             if(!player->Play()){
-                               return result->Error(kErrorVlc, "Failed to play media");
-                             }
-                           }
-                           result->Success();
-                         });
+          return Enqueue(
+              std::move(result), [player = player_, media_ptr = media.release(),
+                                  autostart](MethodResult result) {
+                std::unique_ptr<Media> media(media_ptr);
+                if (!player->Open(std::move(media))) {
+                  return result->Error(kErrorVlc, "Failed to open media");
+                }
+                if (autostart) {
+                  if (!player->Play()) {
+                    return result->Error(kErrorVlc, "Failed to play media");
+                  }
+                }
+                result->Success();
+              });
         }
       } else if (auto playlist_map =
                      channels::TryGetMapElement<flutter::EncodableMap>(
@@ -231,15 +236,16 @@ void PlayerBridge::HandleMethodCall(
                        [player = player_, playlist_ptr = playlist.release(),
                         mode, autostart](MethodResult result) {
                          std::unique_ptr<Playlist> playlist(playlist_ptr);
-                         if(!player->Open(std::move(playlist))){
-                              result->Error(kErrorVlc, "Failed to open playlist");
-                              return;
+                         if (!player->Open(std::move(playlist))) {
+                           result->Error(kErrorVlc, "Failed to open playlist");
+                           return;
                          }
                          player->SetPlaylistMode(mode);
                          if (autostart) {
-                           if(!player->Play()){
-                              result->Error(kErrorVlc, "Failed to play playlist");
-                              return;
+                           if (!player->Play()) {
+                             result->Error(kErrorVlc,
+                                           "Failed to play playlist");
+                             return;
                            }
                          }
                          result->Success();
@@ -252,8 +258,8 @@ void PlayerBridge::HandleMethodCall(
 
   if (method_name.compare(kMethodPlay) == 0) {
     return Enqueue(std::move(result), [player = player_](MethodResult result) {
-      if(!player->Play()){
-        result->Error(kErrorVlc, "Failed to start player");
+      if (!player->Play()) {
+        return result->Error(kErrorVlc, "Failed to start player");
       }
       result->Success();
     });
@@ -445,8 +451,6 @@ void PlayerBridge::OnVideoDimensionsChanged(int32_t width, int32_t height) {
   });
   EmitEvent(event);
 }
-
-
 
 }  // namespace windows
 }  // namespace foxglove

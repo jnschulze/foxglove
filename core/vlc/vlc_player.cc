@@ -38,12 +38,14 @@ VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment)
   SetupEventHandlers();
 }
 
-VlcPlayer::~VlcPlayer() { Shutdown(); }
+VlcPlayer::~VlcPlayer() {
+  assert(thread_checker_.IsCreationThreadCurrent());
+  Shutdown();
+}
 
 void VlcPlayer::Shutdown() {
   PLAYER_LOG("Shutting down");
 
- 
   if (shutting_down_) {
     return;
   }
@@ -58,7 +60,6 @@ void VlcPlayer::Shutdown() {
   }
 
   media_list_player_->SetPlaylist(nullptr);
-
 }
 
 std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
@@ -252,7 +253,8 @@ bool VlcPlayer::Next() {
 }
 
 bool VlcPlayer::Previous() {
-  return SafeInvokeBool([this]() -> bool { return media_list_player_->Previous(); });
+  return SafeInvokeBool(
+      [this]() -> bool { return media_list_player_->Previous(); });
 }
 
 void VlcPlayer::SetPlaylistMode(PlaylistMode mode) {
@@ -285,7 +287,7 @@ void VlcPlayer::SafeInvoke(VoidCallback callback) {
   }
 }
 
-bool VlcPlayer::SafeInvokeBool(BoolCallback callback){
+bool VlcPlayer::SafeInvokeBool(BoolCallback callback) {
   const std::lock_guard<std::mutex> lock(op_mutex_);
   if (IsValid()) {
     return callback();
@@ -296,7 +298,6 @@ bool VlcPlayer::SafeInvokeBool(BoolCallback callback){
 void VlcPlayer::SetupEventHandlers() {
   player_event_manager_ = std::make_unique<VLC::MediaPlayerEventManager>(
       media_player_.eventManager());
-
 
   player_event_manager_->onNothingSpecial(
       [this] { HandleVlcState(PlaybackState::kNone); });
