@@ -11,5 +11,5 @@ jobs:
       with:
         clang-format-version: '14'
         fallback-style: 'Google'
-        exclude-regex: 'third_party'
+        exclude-regex: '(third_party|runner)'
         check-path: '.'
