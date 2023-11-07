@@ -21,4 +21,4 @@ struct VideoDimensions {
   }
 };
 
-}
+}  // namespace foxglove

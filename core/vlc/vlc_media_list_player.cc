@@ -86,7 +86,7 @@ bool VlcMediaListPlayer::Play() {
   if (!current_index_.has_value()) {
     return PlayItemAtIndexInternal(0);
   }
-   return libvlc_media_player_play(media_player_) == 0;
+  return libvlc_media_player_play(media_player_) == 0;
 }
 
 void VlcMediaListPlayer::Pause() {

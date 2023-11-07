@@ -27,7 +27,7 @@ class Media : public MediaSource {
   }
 
   static std::unique_ptr<Media> file(std::string path) {
-    std::unique_ptr<Media> media = std::make_unique<Media>();
+    auto media = std::make_unique<Media>();
     media->resource_ = path;
     media->location_ = "file:///" + path;
     media->media_type_ = kMediaTypeFile;
@@ -35,7 +35,7 @@ class Media : public MediaSource {
   }
 
   static std::unique_ptr<Media> network(std::string url) {
-    std::unique_ptr<Media> media = std::make_unique<Media>();
+    auto media = std::make_unique<Media>();
     media->resource_ = url;
     media->location_ = url;
     media->media_type_ = kMediaTypeNetwork;
@@ -43,7 +43,7 @@ class Media : public MediaSource {
   }
 
   static std::unique_ptr<Media> directShow(std::string resource) {
-    std::unique_ptr<Media> media = std::make_unique<Media>();
+    auto media = std::make_unique<Media>();
     media->resource_ = resource;
     media->location_ = resource;
     media->media_type_ = kMediaTypeDirectShow;
@@ -54,13 +54,11 @@ class Media : public MediaSource {
   const std::string media_type() const { return media_type_; };
   const std::string resource() const { return resource_; };
   const std::string location() const { return location_; };
-  //std::map<std::string, std::string>& metas() const { return metas_; };
 
  private:
   std::string media_type_;
   std::string resource_;
   std::string location_;
-  std::map<std::string, std::string> metas_;
 };
 
 }  // namespace foxglove

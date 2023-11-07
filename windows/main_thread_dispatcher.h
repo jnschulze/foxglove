@@ -4,8 +4,8 @@
 #include <functional>
 #include <mutex>
 
-#include "message_window.h"
 #include "base/thread_checker.h"
+#include "message_window.h"
 
 namespace foxglove {
 namespace windows {
