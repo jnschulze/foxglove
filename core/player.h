@@ -32,6 +32,7 @@ class Player : public VideoOutputFactory {
 
   virtual void SetEventDelegate(
       std::unique_ptr<PlayerEventDelegate> event_delegate) = 0;
+  virtual PlayerEventDelegate* event_delegate() const = 0;
 
   int64_t id() const { return reinterpret_cast<int64_t>(this); }
 

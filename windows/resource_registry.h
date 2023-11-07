@@ -26,10 +26,14 @@ class EnvironmentRegistry {
 
 class PlayerRegistry {
  public:
+  typedef std::function<void(Player* player)> VisitPlayerCallback;
+
   PlayerRegistry();
 
   void InsertPlayer(int64_t player_id, std::unique_ptr<Player> player);
   std::unique_ptr<Player> RemovePlayer(int64_t player_id);
+  void Visit(VisitPlayerCallback visitor);
+  void EraseAll(VisitPlayerCallback visitor);
   void Clear();
   size_t Count();
 

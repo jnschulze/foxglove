@@ -12,8 +12,6 @@
 #include "video/video_outlet.h"
 #endif
 
-
-
 namespace foxglove {
 namespace windows {
 
@@ -48,19 +46,21 @@ void MethodChannelHandler::Terminate() {
     return;
   }
 
+  std::promise<void> promise;
+  task_queue_->Enqueue([&]() {
+    DestroyPlayers();
 
- // we are blocking main thread here so we can't offload work
- // to another thread that might try to callback into main thread (one destructor at least tries this)
-  registry_->players()->Clear();
-  registry_->environments()->Clear();
-  task_queue_->Terminate();
+    // Don't accept any further tasks.
+    task_queue_->Terminate();
 
+    promise.set_value();
+  });
 
+  promise.get_future().wait();
 
   // make sure we make a last call to the main thread dispatcher to finish
   // pending work
   main_thread_dispatcher_->Terminate();
-
 }
 
 void MethodChannelHandler::HandleMethodCall(
@@ -104,8 +104,7 @@ void MethodChannelHandler::InitPlatform(
 
   if (!task_queue_->Enqueue([this, shared_result]() {
         // Clear old instances after hot restart.
-        registry_->players()->Clear();
-        registry_->environments()->Clear();
+        DestroyPlayers();
         shared_result->Success();
       })) {
     shared_result->Error(kErrorCodePluginTerminated);
@@ -193,18 +192,21 @@ void MethodChannelHandler::CreatePlayer(
         }
 
         auto player = env->CreatePlayer();
-
-        player->SetEventDelegate(std::make_unique<PlayerBridge>(
-            binary_messenger_, task_queue_, player.get(),
-            main_thread_dispatcher_));
+        auto bridge = std::make_unique<PlayerBridge>(binary_messenger_,
+                                                     task_queue_, player.get(),
+                                                     main_thread_dispatcher_);
+        auto bridge_ptr = bridge.get();
+        player->SetEventDelegate(std::move(bridge));
         auto id = player->id();
         auto texture_id = CreateVideoOutput(player.get());
-        if(texture_id == -1){
+        if (texture_id == -1) {
           return shared_result->Error("video_output_creation_failed");
         }
         registry_->players()->InsertPlayer(id, std::move(player));
-        shared_result->Success(flutter::EncodableMap(
-            {{"player_id", id}, {"texture_id", texture_id}}));
+        bridge_ptr->RegisterChannelHandlers([=]() {
+          shared_result->Success(flutter::EncodableMap(
+              {{"player_id", id}, {"texture_id", texture_id}}));
+        });
       })) {
     shared_result->Error(kErrorCodePluginTerminated);
   }
@@ -237,10 +239,13 @@ void MethodChannelHandler::DisposePlayer(
       shared_result = std::move(result);
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
     if (!task_queue_->Enqueue(
-            [id = *id, shared_result, registry = registry_.get()]() {
+            [id = *id, shared_result, registry = registry_.get(), this]() {
               auto player = registry->players()->RemovePlayer(id);
               if (player) {
-                return shared_result->Success();
+                if (!UnregisterChannelHandlers(
+                        player.get(), [=]() { shared_result->Success(); })) {
+                  shared_result->Success();
+                }
               } else {
                 return shared_result->Error(kErrorCodeInvalidId);
               }
@@ -250,6 +255,24 @@ void MethodChannelHandler::DisposePlayer(
   } else {
     shared_result->Error(kErrorCodeInvalidArguments);
   }
+}
+
+void MethodChannelHandler::DestroyPlayers() {
+  registry_->players()->EraseAll([this](Player* player) {
+    auto is_unregistering = UnregisterChannelHandlers(player);
+    // TODO
+    // We currently don't unregister channels if the plugin is
+    // being terminated (see https://github.com/flutter/flutter/issues/118611)
+    assert(is_unregistering || !PluginState::IsValid());
+  });
+  registry_->environments()->Clear();
+}
+
+bool MethodChannelHandler::UnregisterChannelHandlers(Player* player,
+                                                     Closure callback) {
+  auto player_bridge =
+      reinterpret_cast<PlayerBridge*>(player->event_delegate());
+  return player_bridge && player_bridge->UnregisterChannelHandlers(callback);
 }
 
 }  // namespace windows

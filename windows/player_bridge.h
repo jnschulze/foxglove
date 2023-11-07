@@ -24,6 +24,11 @@ class PlayerBridge : public PlayerEventDelegate {
                std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher);
   ~PlayerBridge() override;
 
+  // Asynchronously registers the channel handlers on the main thread.
+  void RegisterChannelHandlers(Closure callback);
+  // Asynchronously unregisters the channel handlers on the main thread.
+  bool UnregisterChannelHandlers(Closure callback);
+
   void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
                       size_t index) override;
   void OnPlaybackStateChanged(PlaybackState playback_state,
@@ -38,7 +43,6 @@ class PlayerBridge : public PlayerEventDelegate {
   inline bool IsMessengerValid() const { return PluginState::IsValid(); }
 
  private:
-  typedef std::function<void()> VoidCallback;
   Player* player_;
   std::shared_ptr<TaskQueue> task_queue_;
   std::mutex event_sink_mutex_;
@@ -48,11 +52,6 @@ class PlayerBridge : public PlayerEventDelegate {
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
   std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher_;
-
-  // Asynchronously registers the channel handlers on the main thread.
-  void RegisterChannelHandlers(VoidCallback callback);
-  // Asynchronously unregisters the channel handlers on the main thread.
-  void UnregisterChannelHandlers(VoidCallback callback);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -65,6 +64,8 @@ class PlayerBridge : public PlayerEventDelegate {
   void Enqueue(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
                    method_result,
                std::function<void(MethodResult result)> handler);
+  void SetEventSink(
+      std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink);
 };
 
 }  // namespace windows

@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "base/thread_checker.h"
 #include "events.h"
 #include "player.h"
 #include "vlc/vlc_environment.h"
@@ -64,6 +65,8 @@ class VlcPlayer : public Player {
     event_delegate_ = std::move(event_delegate);
   }
 
+  PlayerEventDelegate* event_delegate() const { return event_delegate_.get(); }
+
   // |VideoOutputFactory|
   std::unique_ptr<VideoOutput> CreatePixelBufferOutput(
       std::unique_ptr<PixelBufferOutputDelegate> output_delegate,
@@ -107,6 +110,8 @@ class VlcPlayer : public Player {
  private:
   typedef std::function<void()> VoidCallback;
   typedef std::function<bool()> BoolCallback;
+
+  ThreadChecker thread_checker_;
   VlcMediaState media_state_;
   VlcPlayerState state_;
   std::mutex op_mutex_;
@@ -132,7 +137,6 @@ class VlcPlayer : public Player {
       std::optional<std::chrono::milliseconds> timeout = std::nullopt);
   void SetPlaylistModeInternal(PlaylistMode playlist_mode);
   void OnPlaylistUpdated();
-
 
   void SafeInvoke(VoidCallback callback);
   bool SafeInvokeBool(BoolCallback callback);

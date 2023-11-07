@@ -3,18 +3,18 @@
 #include <atomic>
 #include <condition_variable>
 #include <deque>
-#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "closure.h"
+
 namespace foxglove {
 
 class TaskQueue {
  public:
-  typedef std::function<void()> Task;
   TaskQueue(size_t num_threads,
             std::optional<std::string> thread_name = std::nullopt);
   ~TaskQueue();
@@ -33,7 +33,7 @@ class TaskQueue {
     return true;
   }
 
-  bool Enqueue(Task task) {
+  bool Enqueue(Closure task) {
     if (terminated_) {
       return false;
     }
@@ -50,7 +50,7 @@ class TaskQueue {
   std::vector<std::thread> workers_;
   std::mutex task_pending_mutex_;
   std::condition_variable task_pending_cv_;
-  std::deque<Task> pending_tasks_;
+  std::deque<Closure> pending_tasks_;
 
   void Run();
 };
