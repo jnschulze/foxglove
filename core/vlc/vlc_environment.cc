@@ -31,8 +31,8 @@ VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
     instance_ = std::make_unique<VlcInstance>(0, nullptr);
   } else {
     auto opts = ToCharArray(options);
-    instance_ = std::make_unique<VlcInstance>(
-        static_cast<int32_t>(opts.size()), opts.data());
+    instance_ = std::make_unique<VlcInstance>(static_cast<int32_t>(opts.size()),
+                                              opts.data());
   }
 
 #ifndef NDEBUG
