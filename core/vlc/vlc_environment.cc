@@ -7,16 +7,17 @@
 namespace foxglove {
 
 namespace {
-static std::unique_ptr<const char* []> ToCharArray(
-    const std::vector<std::string>& vector) {
-  size_t size = vector.size();
-  auto array = std::unique_ptr<const char*[]>(new const char*[size]);
 
-  for (auto i = 0; i < size; i++) {
-    array[i] = vector[i].c_str();
+static std::vector<const char*> ToCharArray(
+    const std::vector<std::string>& vector) {
+  std::vector<const char*> ptrs;
+  ptrs.reserve(vector.size());
+  for (const auto& item : vector) {
+    ptrs.push_back(item.c_str());
   }
-  return array;
+  return ptrs;
 }
+
 }  // namespace
 
 VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options)
@@ -31,7 +32,7 @@ VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
   } else {
     auto opts = ToCharArray(options);
     instance_ = std::make_unique<VlcInstance>(
-        static_cast<int32_t>(options.size()), opts.get());
+        static_cast<int32_t>(opts.size()), opts.data());
   }
 
 #ifndef NDEBUG
