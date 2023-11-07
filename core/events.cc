@@ -25,4 +25,4 @@ std::string PlaybackStateToString(PlaybackState state) {
   }
 }
 
-}
+}  // namespace foxglove

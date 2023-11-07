@@ -23,8 +23,8 @@ class TextureOutlet {
   // Unregisters a texture and synchronously waits for its completion.
   //
   // Note:
-  // This function synchronously waits for a callback that gets invoked from the Flutter raster thread.
-  // Be careful to avoid deadlocks.
+  // This function synchronously waits for a callback that gets invoked from the
+  // Flutter raster thread. Be careful to avoid deadlocks.
   void UnregisterTexture(int64_t texture_id);
 
   void Unregister();

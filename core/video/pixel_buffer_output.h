@@ -14,4 +14,4 @@ class PixelBufferOutputDelegate : public VideoOutputDelegate {
   virtual ~PixelBufferOutputDelegate() = default;
 };
 
-}
+}  // namespace foxglove
