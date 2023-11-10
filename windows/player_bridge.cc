@@ -87,6 +87,7 @@ constexpr auto kErrorVlc = "vlc_error";
 
 enum Events : int32_t {
   kNone,
+  kInitialized,
   kPositionChanged,
   kPlaybackStateChanged,
   kMediaChanged,
@@ -176,6 +177,10 @@ void PlayerBridge::SetEventSink(
     std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink) {
   const std::lock_guard<std::mutex> lock(event_sink_mutex_);
   event_sink_ = std::move(event_sink);
+  if (event_sink_) {
+    event_sink_->Success(flutter::EncodableValue(
+        flutter::EncodableMap{{kEventType, Events::kInitialized}}));
+  }
 }
 
 void PlayerBridge::Enqueue(
