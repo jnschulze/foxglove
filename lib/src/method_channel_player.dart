@@ -179,7 +179,7 @@ class _PlayerImpl with _StreamControllers implements Player {
     await _eventChannelReady.future;
 
     _logger.finest('Invoking $methodName');
-    final result = await _methodChannel.invokeMethod(methodName, arguments);
+    final result = await _methodChannel.invokeMethod<T>(methodName, arguments);
     _logger.finest('Invoked $methodName');
     return result;
   }
