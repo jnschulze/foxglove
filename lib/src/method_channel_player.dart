@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 
 enum _PlatformEvent {
   none,
+  initialized,
   positionChanged,
   playbackStateChanged,
   mediaChanged,
@@ -123,6 +124,7 @@ class _PlayerImpl with _StreamControllers implements Player {
   StreamSubscription? _eventChannelSubscription;
   bool _isDisposed = false;
   final Logger _logger = Logger('Foxglove:Player');
+  final _eventChannelReady = Completer<void>();
 
   _PlayerImpl(
       {required this.platform,
@@ -168,145 +170,71 @@ class _PlayerImpl with _StreamControllers implements Player {
   Stream<VideoDimensions> get videoDimensionsStream =>
       _videoDimensionsStreamController.stream;
 
+  Future<T?> _invokeMethod<T>(String methodName, [dynamic arguments]) async {
+    if (_isDisposed) {
+      _logger.warning(
+          'Player is already disposed, ignoring $methodName method call.');
+      return null;
+    }
+    await _eventChannelReady.future;
+
+    _logger.finest('Invoking $methodName');
+    final result = await _methodChannel.invokeMethod<T>(methodName, arguments);
+    _logger.finest('Invoked $methodName');
+    return result;
+  }
+
   @override
   Future<void> open(MediaSource source, {bool autoStart = true}) async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring open request');
-      return;
-    }
-
     if (source is Media) {
       _logger.info('Opening media: ${source.resource}');
-      await _methodChannel.invokeMethod(
+      await _invokeMethod(
           'open', {'media': source.toJson(), 'autostart': autoStart});
     } else if (source is Playlist) {
       _logger.info('Opening playlist: ${source.toJson()}');
-      await _methodChannel.invokeMethod(
+      await _invokeMethod(
           'open', {'playlist': source.toJson(), 'autostart': autoStart});
     }
   }
 
   @override
-  Future<void> setPlaylistMode(PlaylistMode mode) async {
-    if (_isDisposed) {
-      _logger.warning(
-          'Player is already disposed, ignoring setPlaylistMode request');
-      return;
-    }
-    _logger.info('Setting playlist mode: $mode');
-    await _methodChannel.invokeMethod('setPlaylistMode', mode.index);
-  }
+  Future<void> setPlaylistMode(PlaylistMode mode) =>
+      _invokeMethod('setPlaylistMode', mode.index);
 
   @override
-  Future<void> play() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring play request');
-      return;
-    }
-    _logger.info('Playing');
-    await _methodChannel.invokeMethod('play');
-  }
+  Future<void> play() => _invokeMethod('play');
 
   @override
-  Future<void> pause() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring pause request');
-      return;
-    }
-    _logger.info('Pausing');
-    await _methodChannel.invokeMethod('pause');
-  }
+  Future<void> pause() => _invokeMethod('pause');
 
   @override
-  Future<void> stop() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring stop request');
-      return;
-    }
-    _logger.info('Stopping');
-    await _methodChannel.invokeMethod('stop');
-  }
+  Future<void> stop() => _invokeMethod('stop');
 
   @override
-  Future<void> next() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring next request');
-      return;
-    }
-    _logger.info('Next');
-    await _methodChannel.invokeMethod('next');
-  }
+  Future<void> next() => _invokeMethod('next');
 
   @override
-  Future<void> previous() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring previous request');
-      return;
-    }
-    _logger.info('Previous');
-    await _methodChannel.invokeMethod('previous');
-  }
+  Future<void> previous() => _invokeMethod('previous');
 
   @override
-  Future<void> seekPosition(double position) async {
-    if (_isDisposed) {
-      _logger
-          .warning('Player is already disposed, ignoring seekPosition request');
-      return;
-    }
-    _logger.info('Seeking to position: $position');
-    await _methodChannel.invokeMethod('seekPosition', position);
-  }
+  Future<void> seekPosition(double position) =>
+      _invokeMethod('seekPosition', position);
 
   @override
-  Future<void> seekTime(Duration position) async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring seekTime request');
-      return;
-    }
-    _logger.info('Seeking to time: $position');
-    await _methodChannel.invokeMethod('seekTime', position.inMilliseconds);
-  }
+  Future<void> seekTime(Duration position) =>
+      _invokeMethod('seekTime', position.inMilliseconds);
 
   @override
-  Future<void> setRate(double rate) async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring setRate request');
-      return;
-    }
-    _logger.info('Setting rate: $rate');
-    await _methodChannel.invokeMethod('setRate', rate);
-  }
+  Future<void> setRate(double rate) => _invokeMethod('setRate', rate);
 
   @override
-  Future<void> setVolume(double volume) async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring setVolume request');
-      return;
-    }
-    _logger.info('Setting volume: $volume');
-    await _methodChannel.invokeMethod('setVolume', volume);
-  }
+  Future<void> setVolume(double volume) => _invokeMethod('setVolume', volume);
 
   @override
-  Future<void> mute() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring mute request');
-      return;
-    }
-    _logger.info('Muting');
-    await _methodChannel.invokeMethod('mute');
-  }
+  Future<void> mute() => _invokeMethod('mute');
 
   @override
-  Future<void> unmute() async {
-    if (_isDisposed) {
-      _logger.warning('Player is already disposed, ignoring unmute request');
-      return;
-    }
-    _logger.info('Unmuting');
-    await _methodChannel.invokeMethod('unmute');
-  }
+  Future<void> unmute() => _invokeMethod('unmute');
 
   @override
   Future<void> dispose() async {
@@ -326,8 +254,10 @@ class _PlayerImpl with _StreamControllers implements Player {
     }
 
     final event = _PlatformEvent.values[ev['type'] as int];
-
     switch (event) {
+      case _PlatformEvent.initialized:
+        _eventChannelReady.complete();
+        break;
       case _PlatformEvent.positionChanged:
         final position = ev['position'] as double;
         final duration = ev['duration'] as int;
