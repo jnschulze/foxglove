@@ -127,7 +127,6 @@ bool VlcPlayer::OpenInternal(std::unique_ptr<VlcPlaylist> playlist,
     old_playlist->OnUpdate(nullptr);
   }
 
-  // StopSyncInternal();
   StopInternal();
   // media_state_.Reset();
   state_.is_playlist = is_playlist;
@@ -168,48 +167,7 @@ void VlcPlayer::Stop() {
   }
 }
 
-bool VlcPlayer::StopInternal() {
-  /*
-  std::promise<bool> promise;
-  std::async([this, &promise]() {
-    promise.set_value(media_list_player_->StopAsync());
-  }).wait();
-  return promise.get_future().get();
-  */
-
-  return media_list_player_->StopAsync();
-}
-
-void VlcPlayer::StopSync(std::optional<std::chrono::milliseconds> timeout) {
-  std::lock_guard<std::mutex> lock(op_mutex_);
-  if (IsValid()) {
-    StopSyncInternal(timeout);
-  }
-}
-
-void VlcPlayer::StopSyncInternal(
-    std::optional<std::chrono::milliseconds> timeout) {
-  PLAYER_LOG("Pre StopSync");
-
-  {
-    std::unique_lock<std::mutex> lock(stop_mutex_);
-    is_stopped_ = false;
-
-    bool is_stopping = StopInternal();
-    if (is_stopping) {
-      if (timeout.has_value()) {
-        stop_cond_.wait_for(lock, timeout.value(),
-                            [this]() { return is_stopped_; });
-      } else {
-        stop_cond_.wait(lock, [this]() { return is_stopped_; });
-      }
-    } else {
-      is_stopped_ = true;
-    }
-  }
-
-  PLAYER_LOG("Post StopSync");
-}
+bool VlcPlayer::StopInternal() { return media_list_player_->StopAsync(); }
 
 void VlcPlayer::SeekPosition(float position) {
   auto media_duration = duration();
@@ -346,14 +304,6 @@ void VlcPlayer::HandleVlcState(PlaybackState state) {
   bool has_change = false;
 
   PLAYER_LOG("STATE IS " << PlaybackStateToString(state))
-
-  if (state == PlaybackState::kStopped) {
-    {
-      std::lock_guard<std::mutex> lock(stop_mutex_);
-      is_stopped_ = true;
-    }
-    stop_cond_.notify_one();
-  }
 
   {
     std::lock_guard<std::mutex> lock(state_mutex_);

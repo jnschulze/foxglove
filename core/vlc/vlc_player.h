@@ -1,6 +1,5 @@
 #pragma once
 
-#include <condition_variable>
 #include <mutex>
 
 #include "base/thread_checker.h"
@@ -90,8 +89,6 @@ class VlcPlayer : public Player {
   bool Play() override;
   void Pause() override;
   void Stop() override;
-  void StopSync(
-      std::optional<std::chrono::milliseconds> timeout = std::nullopt);
   void SeekPosition(float position) override;
   void SeekTime(int64_t time) override;
   void SetRate(float rate);
@@ -118,10 +115,6 @@ class VlcPlayer : public Player {
   std::mutex state_mutex_;
   bool shutting_down_ = false;
 
-  std::mutex stop_mutex_;
-  std::condition_variable stop_cond_;
-  bool is_stopped_ = false;
-
   std::shared_ptr<VlcEnvironment> environment_;
   std::unique_ptr<VlcVideoOutput> video_output_;
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
@@ -133,8 +126,6 @@ class VlcPlayer : public Player {
   bool PlayInternal();
   void PauseInternal();
   bool StopInternal();
-  void StopSyncInternal(
-      std::optional<std::chrono::milliseconds> timeout = std::nullopt);
   void SetPlaylistModeInternal(PlaylistMode playlist_mode);
   void OnPlaylistUpdated();
 
