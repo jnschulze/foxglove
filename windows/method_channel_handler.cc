@@ -126,7 +126,8 @@ void MethodChannelHandler::CreateEnvironment(
       shared_result = std::move(result);
   if (!task_queue_->Enqueue(
           [this, args = std::move(env_args), shared_result]() {
-            auto env = std::make_shared<foxglove::VlcEnvironment>(args);
+            auto env =
+                std::make_shared<foxglove::VlcEnvironment>(args, task_queue_);
             auto id = env->id();
             registry_->environments()->RegisterEnvironment(id, std::move(env));
             shared_result->Success(id);
@@ -185,7 +186,8 @@ void MethodChannelHandler::CreatePlayer(
             return shared_result->Error(kErrorCodeInvalidId);
           }
         } else {
-          env = std::make_shared<foxglove::VlcEnvironment>(env_args);
+          env =
+              std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
           if (!env) {
             return shared_result->Error("env_creation_failed");
           }

@@ -29,11 +29,10 @@ class PlayerBridge : public PlayerEventDelegate {
   // Asynchronously unregisters the channel handlers on the main thread.
   bool UnregisterChannelHandlers(Closure callback);
 
-  void OnMediaChanged(const Media* media, std::unique_ptr<MediaInfo> media_info,
-                      size_t index) override;
-  void OnPlaybackStateChanged(PlaybackState playback_state,
-                              bool is_seekable) override;
-  void OnPositionChanged(double position, int64_t duration) override;
+  void OnMediaChanged(const Media& media) override;
+  void OnPlaybackStateChanged(PlaybackState playback_state) override;
+  void OnIsSeekableChanged(bool is_seekable) override;
+  void OnPositionChanged(const MediaPlaybackPosition& position) override;
   void OnRateChanged(double rate) override;
   void OnVolumeChanged(double volume) override;
   void OnMute(bool is_muted) override;

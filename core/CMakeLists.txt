@@ -72,9 +72,8 @@ add_library(${LIBRARY_NAME} STATIC
   base/task_queue.cc
   events.cc
   vlc/vlc_environment.cc
-  vlc/vlc_media_list_player.cc
+  vlc/vlc_media.cc
   vlc/vlc_player.cc
-  vlc/vlc_playlist.cc
   vlc/vlc_pixel_buffer_output.cc
   vlc/vlc_d3d11_context.cc
   vlc/vlc_d3d11_output.cc

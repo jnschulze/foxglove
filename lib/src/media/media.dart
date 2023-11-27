@@ -5,14 +5,10 @@ import 'package:foxglove/src/media/media_source.dart';
 import 'package:path/path.dart' as path;
 
 class Media implements MediaSource {
-  @override
-  MediaSourceType get mediaSourceType => MediaSourceType.media;
   final MediaType mediaType;
   final String resource;
-  final Map<String, String> metas;
 
-  const Media._(
-      {required this.mediaType, required this.resource, this.metas = const {}});
+  const Media._({required this.mediaType, required this.resource});
 
   factory Media.file(File file) {
     return Media._(mediaType: MediaType.file, resource: file.path);
@@ -78,7 +74,7 @@ class Media implements MediaSource {
   }
 
   @override
-  int get hashCode => mediaType.hashCode ^ resource.hashCode;
+  int get hashCode => Object.hash(mediaType, resource);
 
   @override
   bool operator ==(Object other) =>
@@ -88,4 +84,9 @@ class Media implements MediaSource {
 
   @override
   String toString() => '[$mediaType]$resource';
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'type': mediaType.name, 'resource': resource};
+  }
 }

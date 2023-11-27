@@ -1,11 +1,12 @@
 #pragma once
 
+#include <vlc/vlc.h>
+
 #include <mutex>
 
 #include "video/d3d11_output.h"
 #include "vlc/vlc_d3d11_context.h"
 #include "vlc/vlc_video_output.h"
-#include "vlcpp/vlc.hpp"
 
 namespace foxglove {
 
@@ -16,7 +17,7 @@ class VlcD3D11Output : public VlcVideoOutput {
                  winrt::com_ptr<IDXGIAdapter> adapter);
   ~VlcD3D11Output() override;
 
-  void Attach(VlcPlayer* player) override;
+  void Attach(libvlc_media_player_t* player) override;
 
   VideoOutputDelegate* output_delegate() const override {
     return delegate_.get();

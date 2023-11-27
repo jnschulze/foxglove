@@ -40,8 +40,8 @@ class _MyAppState extends State<MyApp> {
     }
 
     final m = Media.file(File(r'some_video.mp4'));
+    await player.setLoopMode(LoopMode.loop);
     await player.open(m);
-    await player.setPlaylistMode(PlaylistMode.loop);
   }
 
   @override

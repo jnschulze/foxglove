@@ -25,9 +25,9 @@ std::string string_format(const std::string& format, Args... args) {
   return std::string(buf.get(), buf.get() + size - 1);
 }
 
-bool TryConvertPlaylistMode(int32_t value, PlaylistMode& playlist_mode) {
-  if (value < PlaylistMode::last_value) {
-    playlist_mode = static_cast<PlaylistMode>(value);
+bool TryConvertLoopMode(int32_t value, LoopMode& loop_mode) {
+  if (value < LoopMode::kLastValue) {
+    loop_mode = static_cast<LoopMode>(value);
     return true;
   }
   return false;
@@ -44,36 +44,14 @@ std::unique_ptr<Media> TryCreateMedia(const flutter::EncodableMap* map) {
   return nullptr;
 }
 
-void TryPopulatePlaylist(Playlist* playlist, const flutter::EncodableMap* map,
-                         PlaylistMode& playlist_mode) {
-  auto medias =
-      channels::TryGetMapElement<flutter::EncodableList>(map, "medias");
-  if (medias) {
-    for (const auto& item : *medias) {
-      if (auto media_map = std::get_if<flutter::EncodableMap>(&item)) {
-        auto media = TryCreateMedia(media_map);
-        if (media) {
-          playlist->Add(std::move(media));
-        }
-      }
-    }
-  }
-
-  if (auto mode = channels::TryGetMapElement<int32_t>(map, "mode")) {
-    TryConvertPlaylistMode(*mode, playlist_mode);
-  }
-}
-
 constexpr auto kMethodOpen = "open";
 constexpr auto kMethodPlay = "play";
 constexpr auto kMethodPause = "pause";
 constexpr auto kMethodStop = "stop";
-constexpr auto kMethodNext = "next";
-constexpr auto kMethodPrevious = "previous";
 constexpr auto kMethodSeekPosition = "seekPosition";
 constexpr auto kMethodSeekTime = "seekTime";
 constexpr auto kMethodSetRate = "setRate";
-constexpr auto kMethodSetPlaylistMode = "setPlaylistMode";
+constexpr auto kMethodSetLoopMode = "setLoopMode";
 constexpr auto kMethodSetVolume = "setVolume";
 constexpr auto kMethodMute = "mute";
 constexpr auto kMethodUnmute = "unmute";
@@ -94,7 +72,8 @@ enum Events : int32_t {
   kRateChanged,
   kVolumeChanged,
   kMuteChanged,
-  kVideoDimensionsChanged
+  kVideoDimensionsChanged,
+  kIsSeekableChanged
 };
 
 }  // namespace
@@ -231,30 +210,6 @@ void PlayerBridge::HandleMethodCall(
                 result->Success();
               });
         }
-      } else if (auto playlist_map =
-                     channels::TryGetMapElement<flutter::EncodableMap>(
-                         map, "playlist")) {
-        auto playlist = player_->CreatePlaylist();
-        PlaylistMode mode = PlaylistMode::single;
-        TryPopulatePlaylist(playlist.get(), playlist_map, mode);
-        return Enqueue(std::move(result),
-                       [player = player_, playlist_ptr = playlist.release(),
-                        mode, autostart](MethodResult result) {
-                         std::unique_ptr<Playlist> playlist(playlist_ptr);
-                         if (!player->Open(std::move(playlist))) {
-                           result->Error(kErrorVlc, "Failed to open playlist");
-                           return;
-                         }
-                         player->SetPlaylistMode(mode);
-                         if (autostart) {
-                           if (!player->Play()) {
-                             result->Error(kErrorVlc,
-                                           "Failed to play playlist");
-                             return;
-                           }
-                         }
-                         result->Success();
-                       });
       }
     }
 
@@ -280,20 +235,6 @@ void PlayerBridge::HandleMethodCall(
   if (method_name.compare(kMethodStop) == 0) {
     return Enqueue(std::move(result), [player = player_](MethodResult result) {
       player->Stop();
-      result->Success();
-    });
-  }
-
-  if (method_name.compare(kMethodNext) == 0) {
-    return Enqueue(std::move(result), [player = player_](MethodResult result) {
-      player->Next();
-      result->Success();
-    });
-  }
-
-  if (method_name.compare(kMethodPrevious) == 0) {
-    return Enqueue(std::move(result), [player = player_](MethodResult result) {
-      player->Previous();
       result->Success();
     });
   }
@@ -332,13 +273,13 @@ void PlayerBridge::HandleMethodCall(
     return result->Error(kErrorCodeBadArgs);
   }
 
-  if (method_name.compare(kMethodSetPlaylistMode) == 0) {
+  if (method_name.compare(kMethodSetLoopMode) == 0) {
     if (auto value = std::get_if<int32_t>(method_call.arguments())) {
-      PlaylistMode mode = PlaylistMode::single;
-      if (TryConvertPlaylistMode(*value, mode)) {
+      LoopMode mode = LoopMode::kOff;
+      if (TryConvertLoopMode(*value, mode)) {
         return Enqueue(std::move(result),
                        [player = player_, mode](MethodResult result) {
-                         player->SetPlaylistMode(mode);
+                         player->SetLoopMode(mode);
                          result->Success();
                        });
       }
@@ -387,39 +328,38 @@ void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
   });
 }
 
-void PlayerBridge::OnMediaChanged(const Media* media,
-                                  std::unique_ptr<MediaInfo> media_info,
-                                  size_t index) {
-  auto duration = media_info->duration();
-  auto type = media->media_type();
-  auto resource = media->resource();
+void PlayerBridge::OnMediaChanged(const Media& media) {
+  auto type = media.media_type();
+  auto resource = media.resource();
   const auto event = flutter::EncodableValue(
       flutter::EncodableMap{{kEventType, Events::kMediaChanged},
-                            {"media",
-                             flutter::EncodableMap{
-                                 {"type", type},
-                                 {"resource", resource},
-                             }},
-                            {"duration", duration},
-                            {"index", static_cast<int32_t>(index)}});
+                            {"media", flutter::EncodableMap{
+                                          {"type", type},
+                                          {"resource", resource},
+                                      }}});
   EmitEvent(event);
 }
 
-void PlayerBridge::OnPlaybackStateChanged(PlaybackState state,
-                                          bool is_seekable) {
+void PlayerBridge::OnPlaybackStateChanged(PlaybackState state) {
+  const auto event = flutter::EncodableValue(
+      flutter::EncodableMap{{kEventType, kPlaybackStateChanged},
+                            {"state", static_cast<int32_t>(state)}});
+  EmitEvent(event);
+}
+
+void PlayerBridge::OnIsSeekableChanged(bool is_seekable) {
   const auto event = flutter::EncodableValue(flutter::EncodableMap{
-      {kEventType, kPlaybackStateChanged},
-      {"state", static_cast<int32_t>(state)},
-      {"is_seekable", is_seekable},
+      {kEventType, kIsSeekableChanged},
+      {kEventValue, is_seekable},
   });
   EmitEvent(event);
 }
 
-void PlayerBridge::OnPositionChanged(double position, int64_t duration) {
+void PlayerBridge::OnPositionChanged(const MediaPlaybackPosition& position) {
   const auto event = flutter::EncodableValue(flutter::EncodableMap{
       {kEventType, kPositionChanged},
-      {"duration", duration},
-      {"position", position},
+      {"duration", position.duration},
+      {"position", position.position},
   });
   EmitEvent(event);
 }

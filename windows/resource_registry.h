@@ -11,8 +11,6 @@ namespace foxglove {
 class EnvironmentRegistry {
  public:
   EnvironmentRegistry();
-  std::shared_ptr<PlayerEnvironment> CreateEnvironment(
-      std::vector<std::string> args);
   std::shared_ptr<PlayerEnvironment> GetEnvironment(int64_t id);
 
   void RegisterEnvironment(int64_t id, std::shared_ptr<PlayerEnvironment> env);

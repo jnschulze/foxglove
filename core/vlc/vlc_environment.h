@@ -1,7 +1,8 @@
 #pragma once
 
+#include <vlc/vlc.h>
+
 #include <memory>
-#include <vlcpp/vlc.hpp>
 
 #include "base/task_queue.h"
 #include "player_environment.h"
@@ -36,7 +37,6 @@ class VlcEnvironment : public PlayerEnvironment,
  public:
   VlcEnvironment(const std::vector<std::string>& arguments,
                  std::shared_ptr<TaskQueue> task_queue);
-  VlcEnvironment(const std::vector<std::string>& arguments);
   ~VlcEnvironment() override;
 
   std::unique_ptr<Player> CreatePlayer() override;

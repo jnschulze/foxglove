@@ -26,7 +26,6 @@
 
 #include "Instance.hpp"
 #include "Media.hpp"
-#include "MediaList.hpp"
 #include "MediaPlayer.hpp"
 #include "EventManager.hpp"
 #include "structures.hpp"

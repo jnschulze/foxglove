@@ -44,12 +44,10 @@ abstract class Player {
   Stream<VideoDimensions> get videoDimensionsStream;
 
   Future<void> open(MediaSource media, {bool autoStart = true});
-  Future<void> setPlaylistMode(PlaylistMode playlistMode);
+  Future<void> setLoopMode(LoopMode loopMode);
   Future<void> play();
   Future<void> pause();
   Future<void> stop();
-  Future<void> next();
-  Future<void> previous();
   Future<void> seekPosition(double position);
   Future<void> seekTime(Duration time);
   Future<void> setRate(double rate);

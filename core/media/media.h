@@ -16,6 +16,16 @@ class Media : public MediaSource {
   static constexpr auto kMediaTypeNetwork = "network";
   static constexpr auto kMediaTypeDirectShow = "directShow";
 
+  Media(std::string_view media_type, std::string_view resource,
+        std::string_view location)
+      : media_type_(media_type), resource_(resource), location_(location) {}
+
+  std::unique_ptr<Media> clone() {
+    return std::make_unique<Media>(media_type(), resource(), location());
+  }
+
+  Media(const Media& m) : Media(m.media_type(), m.resource(), m.location()) {}
+
   static std::unique_ptr<Media> create(std::string_view type,
                                        const std::string& url) {
     if (type.compare(kMediaTypeFile) == 0)
@@ -27,27 +37,15 @@ class Media : public MediaSource {
   }
 
   static std::unique_ptr<Media> file(std::string path) {
-    auto media = std::make_unique<Media>();
-    media->resource_ = path;
-    media->location_ = "file:///" + path;
-    media->media_type_ = kMediaTypeFile;
-    return media;
+    return std::make_unique<Media>(kMediaTypeFile, path, "file:///" + path);
   }
 
   static std::unique_ptr<Media> network(std::string url) {
-    auto media = std::make_unique<Media>();
-    media->resource_ = url;
-    media->location_ = url;
-    media->media_type_ = kMediaTypeNetwork;
-    return media;
+    return std::make_unique<Media>(kMediaTypeNetwork, url, url);
   }
 
   static std::unique_ptr<Media> directShow(std::string resource) {
-    auto media = std::make_unique<Media>();
-    media->resource_ = resource;
-    media->location_ = resource;
-    media->media_type_ = kMediaTypeDirectShow;
-    return media;
+    return std::make_unique<Media>(kMediaTypeDirectShow, resource, resource);
   }
 
   const std::string type() const { return "media"; }

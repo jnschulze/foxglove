@@ -4,12 +4,12 @@
 
 #include "video/video_output.h"
 
-namespace foxglove {
+struct libvlc_media_player_t;
 
-class VlcPlayer;
+namespace foxglove {
 class VlcVideoOutput : public VideoOutput {
  public:
-  virtual void Attach(VlcPlayer* player) = 0;
+  virtual void Attach(libvlc_media_player_t* player) = 0;
 
   const VideoDimensions& dimensions() const override {
     return current_dimensions_;

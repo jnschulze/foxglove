@@ -34,7 +34,6 @@ namespace VLC
 
 class MediaEventManager;
 class Instance;
-class MediaList;
 class TrackList;
 
 class Media : protected CallbackOwner<4>, public Internal<libvlc_media_t>
@@ -185,20 +184,6 @@ public:
     Media( int fd)
         : Internal { libvlc_media_new_fd( fd ),
                      libvlc_media_release }
-    {
-    }
-
-    /**
-     * Get media instance from this media list instance. This action will increase
-     * the refcount on the media instance.
-     * The libvlc_media_list_lock should NOT be held upon entering this function.
-     *
-     * \param list a media list instance
-     * \return media instance
-     */
-    Media(MediaList& list)
-        : Internal{ libvlc_media_list_media( getInternalPtr<libvlc_media_list_t>( list ) ),
-                    libvlc_media_release }
     {
     }
 
@@ -593,14 +578,6 @@ public:
         for ( auto i = 0u; i < count; ++i )
             res.emplace_back( libvlc_media_tracklist_at( trackList.get(), i ) );
         return res;
-    }
-
-    std::shared_ptr<MediaList> subitems()
-    {
-        auto p = libvlc_media_subitems( *this );
-        if ( p == nullptr )
-            return nullptr;
-        return std::make_shared<MediaList>( p );
     }
 
     Type type()
