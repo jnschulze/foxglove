@@ -1,6 +1,5 @@
 export 'package:foxglove/src/media/media.dart';
 export 'package:foxglove/src/media/media_source.dart';
-export 'package:foxglove/src/media/playlist.dart';
 export 'package:foxglove/src/base.dart';
 export 'package:foxglove/src/player_state.dart';
 export 'package:foxglove/src/player_platform.dart';

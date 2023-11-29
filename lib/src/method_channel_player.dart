@@ -13,7 +13,8 @@ enum _PlatformEvent {
   rateChanged,
   volumeChanged,
   muteChanged,
-  videoDimensionsChanged
+  videoDimensionsChanged,
+  isSeekableChanged
 }
 
 mixin _StreamControllers {
@@ -37,19 +38,6 @@ mixin _StreamControllers {
     _positionStateController.close();
     _playbackStateController.close();
     _generalStateController.close();
-  }
-}
-
-extension on Media {
-  Map<String, dynamic> toJson() {
-    return {'type': mediaType.name, 'resource': resource};
-  }
-}
-
-extension on Playlist {
-  Map<String, dynamic> toJson() {
-    final medias = this.medias.map((m) => m.toJson()).toList();
-    return {'medias': medias, 'mode': playlistMode.index};
   }
 }
 
@@ -186,20 +174,14 @@ class _PlayerImpl with _StreamControllers implements Player {
 
   @override
   Future<void> open(MediaSource source, {bool autoStart = true}) async {
-    if (source is Media) {
-      _logger.info('Opening media: ${source.resource}');
-      await _invokeMethod(
-          'open', {'media': source.toJson(), 'autostart': autoStart});
-    } else if (source is Playlist) {
-      _logger.info('Opening playlist: ${source.toJson()}');
-      await _invokeMethod(
-          'open', {'playlist': source.toJson(), 'autostart': autoStart});
-    }
+    _logger.info('Opening media: $source');
+    await _invokeMethod(
+        'open', {'media': source.toJson(), 'autostart': autoStart});
   }
 
   @override
-  Future<void> setPlaylistMode(PlaylistMode mode) =>
-      _invokeMethod('setPlaylistMode', mode.index);
+  Future<void> setLoopMode(LoopMode mode) =>
+      _invokeMethod('setLoopMode', mode.index);
 
   @override
   Future<void> play() => _invokeMethod('play');
@@ -209,12 +191,6 @@ class _PlayerImpl with _StreamControllers implements Player {
 
   @override
   Future<void> stop() => _invokeMethod('stop');
-
-  @override
-  Future<void> next() => _invokeMethod('next');
-
-  @override
-  Future<void> previous() => _invokeMethod('previous');
 
   @override
   Future<void> seekPosition(double position) =>
@@ -272,18 +248,20 @@ class _PlayerImpl with _StreamControllers implements Player {
       case _PlatformEvent.playbackStateChanged:
         final stateIndex = ev['state'] as int;
         final state = PlaybackState.values[stateIndex];
-        final isSeekable = ev['is_seekable'] as bool;
         _logger.info('Playback state changed: $state');
-        _playbackState = _playbackState.copyWith(
-            playbackState: state, isSeekable: isSeekable);
+        _playbackState = _playbackState.copyWith(playbackState: state);
+        _playbackStateController.sink.add(_playbackState);
+        break;
+      case _PlatformEvent.isSeekableChanged:
+        final isSeekable = ev['value'] as bool;
+        _logger.info('isSeekable changed: $isSeekable');
+        _playbackState = _playbackState.copyWith(isSeekable: isSeekable);
         _playbackStateController.sink.add(_playbackState);
         break;
       case _PlatformEvent.mediaChanged:
         final media = Media.fromJson(ev['media']);
-        final index = ev['index'];
         _logger.info('Media changed: ${media.resource}');
-        _currentMediaState =
-            _currentMediaState.copyWith(media: media, index: index);
+        _currentMediaState = _currentMediaState.copyWith(media: media);
         _currentMediaStateController.sink.add(_currentMediaState);
         break;
       case _PlatformEvent.rateChanged:

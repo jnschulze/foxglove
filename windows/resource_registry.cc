@@ -7,16 +7,6 @@ namespace foxglove {
 
 EnvironmentRegistry::EnvironmentRegistry() {}
 
-std::shared_ptr<PlayerEnvironment> EnvironmentRegistry::CreateEnvironment(
-    std::vector<std::string> args) {
-  auto environment = std::make_shared<VlcEnvironment>(args);
-  {
-    std::lock_guard<std::mutex> lock(map_mutex_);
-    items_[environment->id()] = environment;
-  }
-  return environment;
-}
-
 std::shared_ptr<PlayerEnvironment> EnvironmentRegistry::GetEnvironment(
     int64_t id) {
   {

@@ -1,8 +1,3 @@
-enum MediaSourceType {
-  media,
-  playlist,
-}
-
 enum MediaType {
   file,
   network,
@@ -10,7 +5,7 @@ enum MediaType {
   directShow,
 }
 
-enum PlaylistMode { single, loop, repeat }
+enum LoopMode { off, loop }
 
 enum PlaybackState {
   none,

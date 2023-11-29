@@ -3,31 +3,14 @@ import 'package:foxglove/src/media/media.dart';
 
 /// State of a [Player] instance.
 class CurrentMediaState {
-  /// Index of currently playing [Media].
-  final int? index;
-
   /// Currently playing [Media].
   final Media? media;
 
-  /// [List] of [Media] currently opened in the [Player] instance.
-  final List<Media> medias;
+  const CurrentMediaState({this.media});
 
-  /// Whether a [Playlist] is opened or a [Media].
-  final bool isPlaylist;
-
-  const CurrentMediaState(
-      {this.index,
-      this.media,
-      this.medias = const [],
-      this.isPlaylist = false});
-
-  CurrentMediaState copyWith(
-          {int? index, Media? media, List<Media>? medias, bool? isPlaylist}) =>
-      CurrentMediaState(
-          index: index ?? this.index,
-          media: media ?? this.media,
-          medias: medias ?? this.medias,
-          isPlaylist: isPlaylist ?? this.isPlaylist);
+  CurrentMediaState copyWith({Media? media}) => CurrentMediaState(
+        media: media ?? this.media,
+      );
 }
 
 /// Position & duration state of a [Player] instance.

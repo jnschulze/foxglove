@@ -14,12 +14,12 @@ VlcD3D11Output::~VlcD3D11Output() {
   const std::lock_guard<std::mutex> lock(render_context_mutex_);
 }
 
-void VlcD3D11Output::Attach(VlcPlayer* player) {
+void VlcD3D11Output::Attach(libvlc_media_player_t* player) {
   if (Initialize()) {
-    libvlc_video_set_output_callbacks(
-        player->vlc_player(), libvlc_video_engine_d3d11, SetupCb, CleanupCb,
-        ResizeCb, UpdateOutputCb, SwapCb, StartRenderingCb, nullptr, nullptr,
-        SelectPlaneCb, this);
+    libvlc_video_set_output_callbacks(player, libvlc_video_engine_d3d11,
+                                      SetupCb, CleanupCb, ResizeCb,
+                                      UpdateOutputCb, SwapCb, StartRenderingCb,
+                                      nullptr, nullptr, SelectPlaneCb, this);
   }
 }
 
