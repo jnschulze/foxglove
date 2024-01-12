@@ -1,7 +1,5 @@
 #include "vlc/vlc_d3d11_context.h"
 
-#include <iostream>
-
 #ifdef DEBUG_D3D11_LEAKS
 #include <dxgidebug.h>
 #endif
@@ -49,7 +47,8 @@ void RenderContext::Reset() {
   }
 }
 
-bool RenderContext::Initialize(IDXGIAdapter* preferred_adapter) {
+Status<ErrorDetails> RenderContext::Initialize(
+    IDXGIAdapter* preferred_adapter) {
   UINT creation_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #ifdef DEBUG_D3D11_LEAKS
   creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -60,10 +59,8 @@ bool RenderContext::Initialize(IDXGIAdapter* preferred_adapter) {
       preferred_adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
       nullptr, creation_flags, nullptr, 0, D3D11_SDK_VERSION, d3d_device_.put(),
       nullptr, nullptr);
-
   if (FAILED(hr)) {
-    std::cerr << "D3D11CreateDevice failed: " << hr << std::endl;
-    return false;
+    return ErrorDetails::FromHResult(hr, "Creating main D3D11 device failed");
   }
 
   {
@@ -85,15 +82,16 @@ bool RenderContext::Initialize(IDXGIAdapter* preferred_adapter) {
       nullptr, 0, D3D11_SDK_VERSION, d3d_device_vlc_.put(), nullptr,
       d3d_device_context_vlc_.put());
   if (FAILED(hr)) {
-    std::cerr << "D3D11CreateDevice failed: " << hr << std::endl;
-    return false;
+    return ErrorDetails::FromHResult(hr,
+                                     "Creating decoder D3D11 device failed");
   }
 
-  return true;
+  return OkStatus();
 }
 
-bool RenderContext::Update(unsigned int width, unsigned int height,
-                           DXGI_FORMAT format) {
+Status<ErrorDetails> RenderContext::Update(unsigned int width,
+                                           unsigned int height,
+                                           DXGI_FORMAT format) {
   Reset();
 
   /* interim texture */
@@ -115,22 +113,23 @@ bool RenderContext::Update(unsigned int width, unsigned int height,
   auto hr = d3d_device_->CreateTexture2D(&texture_description, nullptr,
                                          texture_.put());
   if (FAILED(hr)) {
-    std::cerr << "Creating texture failed: " << hr << std::endl;
-    return false;
+    return ErrorDetails::FromHResult(hr, "Creating texture failed");
   }
 
   {
     winrt::com_ptr<IDXGIResource1> shared_resource;
-    if (FAILED(texture_->QueryInterface(__uuidof(IDXGIResource1),
-                                        shared_resource.put_void()))) {
-      return false;
+    hr = texture_->QueryInterface(__uuidof(IDXGIResource1),
+                                  shared_resource.put_void());
+    if (FAILED(hr)) {
+      return ErrorDetails::FromHResult(
+          hr, "QueryInterface of IDXGIResource1 failed");
     }
 
-    if (FAILED(shared_resource->CreateSharedHandle(
-            nullptr, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE,
-            nullptr, &texture_shared_handle_))) {
-      std::cerr << "Creating shared handle failed." << std::endl;
-      return false;
+    hr = shared_resource->CreateSharedHandle(
+        nullptr, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE,
+        nullptr, &texture_shared_handle_);
+    if (FAILED(hr)) {
+      return ErrorDetails::FromHResult(hr, "Creating shared handle failed.");
     }
 
     winrt::com_ptr<ID3D11Device1> d3d_device_vlc1;
@@ -138,11 +137,11 @@ bool RenderContext::Update(unsigned int width, unsigned int height,
                                     d3d_device_vlc1.put_void());
 
     texture_vlc_ = nullptr;
-    if (FAILED(d3d_device_vlc1->OpenSharedResource1(texture_shared_handle_,
-                                                    __uuidof(ID3D11Texture2D),
-                                                    texture_vlc_.put_void()))) {
-      std::cerr << "Opening shared handle failed." << std::endl;
-      return false;
+    hr = d3d_device_vlc1->OpenSharedResource1(texture_shared_handle_,
+                                              __uuidof(ID3D11Texture2D),
+                                              texture_vlc_.put_void());
+    if (FAILED(hr)) {
+      return ErrorDetails::FromHResult(hr, "Opening shared handle failed.");
     }
   }
 
@@ -151,16 +150,17 @@ bool RenderContext::Update(unsigned int width, unsigned int height,
   render_target_view_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
   texture_render_target_ = nullptr;
-  if (FAILED(d3d_device_vlc_->CreateRenderTargetView(
-          texture_vlc_.get(), &render_target_view_desc,
-          texture_render_target_.put()))) {
-    return false;
+  hr = d3d_device_vlc_->CreateRenderTargetView(texture_vlc_.get(),
+                                               &render_target_view_desc,
+                                               texture_render_target_.put());
+  if (FAILED(hr)) {
+    return ErrorDetails::FromHResult(hr, "CreateRenderTargetView failed.");
   }
 
   ID3D11RenderTargetView* const targets[1] = {texture_render_target_.get()};
   d3d_device_context_vlc_->OMSetRenderTargets(1, targets, nullptr);
 
-  return true;
+  return OkStatus();
 }
 }  // namespace vlc
 

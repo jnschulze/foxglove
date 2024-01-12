@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/error_details.h"
+#include "base/status.h"
 #include "video/d3d11_output.h"
 
 namespace foxglove {
@@ -10,8 +12,8 @@ class RenderContext {
   RenderContext() {}
   ~RenderContext();
 
-  bool Initialize(IDXGIAdapter* preferred_adapter = nullptr);
-  bool Update(unsigned int width, unsigned int height, DXGI_FORMAT format);
+  Status<ErrorDetails> Initialize(IDXGIAdapter* preferred_adapter = nullptr);
+  Status<ErrorDetails> Update(unsigned int width, unsigned int height, DXGI_FORMAT format);
   void Reset();
 
   inline ID3D11DeviceContext* d3d_device_context_vlc() const {

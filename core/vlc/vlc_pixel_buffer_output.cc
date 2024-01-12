@@ -15,7 +15,8 @@ VlcPixelBufferOutput::VlcPixelBufferOutput(
     std::unique_ptr<PixelBufferOutputDelegate> delegate, PixelFormat format)
     : delegate_(std::move(delegate)), pixel_format_(format) {}
 
-void VlcPixelBufferOutput::Attach(libvlc_media_player_t* player) {
+Status<ErrorDetails> VlcPixelBufferOutput::Attach(
+    libvlc_media_player_t* player) {
   libvlc_video_set_callbacks(
       player,
       [](void* opaque, void** planes) -> void* {
@@ -46,6 +47,8 @@ void VlcPixelBufferOutput::Attach(libvlc_media_player_t* player) {
         auto instance = reinterpret_cast<VlcPixelBufferOutput*>(opaque);
         instance->Cleanup();
       });
+
+  return OkStatus();
 }
 
 unsigned VlcPixelBufferOutput::Setup(char* chroma, unsigned* width,
