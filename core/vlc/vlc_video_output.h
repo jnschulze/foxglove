@@ -2,6 +2,8 @@
 
 #include <mutex>
 
+#include "base/error_details.h"
+#include "base/status.h"
 #include "video/video_output.h"
 
 struct libvlc_media_player_t;
@@ -9,7 +11,7 @@ struct libvlc_media_player_t;
 namespace foxglove {
 class VlcVideoOutput : public VideoOutput {
  public:
-  virtual void Attach(libvlc_media_player_t* player) = 0;
+  virtual Status<ErrorDetails> Attach(libvlc_media_player_t* player) = 0;
 
   const VideoDimensions& dimensions() const override {
     return current_dimensions_;

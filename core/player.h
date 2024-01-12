@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "base/error_details.h"
+#include "base/status.h"
 #include "events.h"
 #include "media/media.h"
 #include "media/media_info.h"
@@ -40,7 +42,8 @@ class Player : public VideoOutputFactory {
 
   int64_t id() const { return reinterpret_cast<int64_t>(this); }
 
-  virtual void SetVideoOutput(std::unique_ptr<VideoOutput> output) = 0;
+  virtual Status<ErrorDetails> SetVideoOutput(
+      std::unique_ptr<VideoOutput> output) = 0;
   virtual VideoOutput* GetVideoOutput() const = 0;
 
   virtual bool Open(std::unique_ptr<Media> media) = 0;

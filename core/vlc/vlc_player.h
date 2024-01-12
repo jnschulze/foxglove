@@ -29,7 +29,8 @@ class VlcPlayer : public Player {
       winrt::com_ptr<IDXGIAdapter> adapter = nullptr) const override;
 #endif
 
-  void SetVideoOutput(std::unique_ptr<VideoOutput> output) override;
+  Status<ErrorDetails> SetVideoOutput(
+      std::unique_ptr<VideoOutput> output) override;
   VideoOutput* GetVideoOutput() const override;
 
   bool Open(std::unique_ptr<Media> media) override;

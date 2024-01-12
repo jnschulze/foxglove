@@ -92,7 +92,8 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     return event_delegate_.get();
   }
 
-  void SetVideoOutput(std::unique_ptr<VlcVideoOutput> video_output) {
+  Status<ErrorDetails> SetVideoOutput(
+      std::unique_ptr<VlcVideoOutput> video_output) {
     assert(thread_checker_.IsCreationThreadCurrent());
     video_output_ = std::move(video_output);
     video_output_->OnDimensionsChanged(
@@ -102,7 +103,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
                                                       dimensions.height);
           }
         });
-    video_output_->Attach(media_player_.get());
+    return video_output_->Attach(media_player_.get());
   }
 
   VlcVideoOutput* GetVideoOutput() const {

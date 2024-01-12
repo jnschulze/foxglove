@@ -13,7 +13,7 @@ class VlcPixelBufferOutput : public VlcVideoOutput {
   VlcPixelBufferOutput(std::unique_ptr<PixelBufferOutputDelegate> delegate,
                        PixelFormat format);
 
-  void Attach(libvlc_media_player_t* player) override;
+  Status<ErrorDetails> Attach(libvlc_media_player_t* player) override;
 
   VideoOutputDelegate* output_delegate() const override {
     return delegate_.get();

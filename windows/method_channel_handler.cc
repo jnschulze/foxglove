@@ -24,7 +24,21 @@ constexpr auto kMethodDisposePlayer = "disposePlayer";
 
 constexpr auto kErrorCodeInvalidArguments = "invalid_args";
 constexpr auto kErrorCodeInvalidId = "invalid_id";
+constexpr auto kErrorCodeEnvCreationFailed = "env_creation_failed";
 constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
+constexpr auto kErrorCodeVideoOutputCreationFailed =
+    "video_output_creation_failed";
+
+flutter::EncodableMap ErrorDetailsToMap(const ErrorDetails& details) {
+  flutter::EncodableMap map;
+  if (auto code = details.code()) {
+    map.emplace("raw_code", *code);
+  }
+  if (auto description = details.description()) {
+    map.emplace("description", *description);
+  }
+  return map;
+}
 
 }  // namespace
 
@@ -189,7 +203,7 @@ void MethodChannelHandler::CreatePlayer(
           env =
               std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
           if (!env) {
-            return shared_result->Error("env_creation_failed");
+            return shared_result->Error(kErrorCodeEnvCreationFailed);
           }
         }
 
@@ -201,35 +215,40 @@ void MethodChannelHandler::CreatePlayer(
         player->SetEventDelegate(std::move(bridge));
         auto id = player->id();
         auto texture_id = CreateVideoOutput(player.get());
-        if (texture_id == -1) {
-          return shared_result->Error("video_output_creation_failed");
+
+        if (!texture_id.has_value()) {
+          return shared_result->Error(kErrorCodeVideoOutputCreationFailed,
+                                      texture_id.error().ToString(),
+                                      ErrorDetailsToMap(texture_id.error()));
         }
         registry_->players()->InsertPlayer(id, std::move(player));
         bridge_ptr->RegisterChannelHandlers([=]() {
           shared_result->Success(flutter::EncodableMap(
-              {{"player_id", id}, {"texture_id", texture_id}}));
+              {{"player_id", id}, {"texture_id", texture_id.value()}}));
         });
       })) {
     shared_result->Error(kErrorCodePluginTerminated);
   }
 }
 
-int64_t MethodChannelHandler::CreateVideoOutput(Player* player) {
-  int64_t texture_id = -1;
-
+tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
+    Player* player) {
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
   auto outlet = std::make_unique<VideoOutletD3d>(texture_registrar_);
-  texture_id = outlet->texture_id();
+  auto texture_id = outlet->texture_id();
   auto video_output =
       player->CreateD3D11Output(std::move(outlet), graphics_adapter_);
-  player->SetVideoOutput(std::move(video_output));
 #else
   auto outlet = std::make_unique<VideoOutlet>(texture_registrar_);
-  texture_id = outlet->texture_id();
+  auto texture_id = outlet->texture_id();
   auto video_output = player->CreatePixelBufferOutput(std::move(outlet),
                                                       PixelFormat::kFormatRGBA);
-  player->SetVideoOutput(std::move(video_output));
 #endif
+
+  auto result = player->SetVideoOutput(std::move(video_output));
+  if (!result.ok()) {
+    return tl::make_unexpected(result.error());
+  }
 
   return texture_id;
 }

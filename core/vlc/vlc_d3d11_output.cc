@@ -1,6 +1,7 @@
 #include "vlc/vlc_d3d11_output.h"
 
 #include <cassert>
+#include <iostream>
 
 #include "vlc/vlc_player.h"
 
@@ -14,16 +15,23 @@ VlcD3D11Output::~VlcD3D11Output() {
   const std::lock_guard<std::mutex> lock(render_context_mutex_);
 }
 
-void VlcD3D11Output::Attach(libvlc_media_player_t* player) {
-  if (Initialize()) {
-    libvlc_video_set_output_callbacks(player, libvlc_video_engine_d3d11,
-                                      SetupCb, CleanupCb, ResizeCb,
-                                      UpdateOutputCb, SwapCb, StartRenderingCb,
-                                      nullptr, nullptr, SelectPlaneCb, this);
+Status<ErrorDetails> VlcD3D11Output::Attach(libvlc_media_player_t* player) {
+  auto result = Initialize();
+  if (!result.ok()) {
+    return result;
   }
+
+  if (!libvlc_video_set_output_callbacks(
+          player, libvlc_video_engine_d3d11, SetupCb, CleanupCb, ResizeCb,
+          UpdateOutputCb, SwapCb, StartRenderingCb, nullptr, nullptr,
+          SelectPlaneCb, this)) {
+    return ErrorDetails("Setting libvlc video output failed");
+  }
+
+  return OkStatus();
 }
 
-bool VlcD3D11Output::Initialize() {
+Status<ErrorDetails> VlcD3D11Output::Initialize() {
   const std::lock_guard lock(render_context_mutex_);
   return render_context_.Initialize(adapter_.get());
 }
@@ -73,7 +81,10 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   self->delegate_->SetTexture(nullptr);
 
   const auto render_context = &self->render_context_;
-  if (!render_context->Update(width, height, kRenderFormat)) {
+  auto update_result = render_context->Update(width, height, kRenderFormat);
+  if (!update_result.ok()) {
+    std::cerr << "Updating render context failed: "
+              << update_result.error().ToString() << std::endl;
     self->SetDimensions(VideoDimensions(0, 0, 0));
     return false;
   }

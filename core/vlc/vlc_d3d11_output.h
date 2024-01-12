@@ -17,7 +17,7 @@ class VlcD3D11Output : public VlcVideoOutput {
                  winrt::com_ptr<IDXGIAdapter> adapter);
   ~VlcD3D11Output() override;
 
-  void Attach(libvlc_media_player_t* player) override;
+  Status<ErrorDetails> Attach(libvlc_media_player_t* player) override;
 
   VideoOutputDelegate* output_delegate() const override {
     return delegate_.get();
@@ -29,7 +29,7 @@ class VlcD3D11Output : public VlcVideoOutput {
   std::mutex render_context_mutex_;
   vlc::RenderContext render_context_;
 
-  bool Initialize();
+  Status<ErrorDetails> Initialize();
 
   static bool SetupCb(void** opaque, const libvlc_video_setup_device_cfg_t* cfg,
                       libvlc_video_setup_device_info_t* out);

@@ -40,12 +40,13 @@ std::unique_ptr<VideoOutput> VlcPlayer::CreateD3D11Output(
 }
 #endif
 
-void VlcPlayer::SetVideoOutput(std::unique_ptr<VideoOutput> video_output) {
+Status<ErrorDetails> VlcPlayer::SetVideoOutput(
+    std::unique_ptr<VideoOutput> video_output) {
   assert(impl_);
   auto vlc_video_output =
       unique_pointer_cast<VlcVideoOutput>(std::move(video_output));
   assert(vlc_video_output);
-  impl_->SetVideoOutput(std::move(vlc_video_output));
+  return impl_->SetVideoOutput(std::move(vlc_video_output));
 }
 
 VideoOutput* VlcPlayer::GetVideoOutput() const {

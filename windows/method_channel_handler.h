@@ -7,6 +7,7 @@
 #include "base/task_queue.h"
 #include "player_bridge.h"
 #include "resource_registry.h"
+#include "third_party/expected.h"
 
 namespace foxglove {
 namespace windows {
@@ -49,7 +50,7 @@ class MethodChannelHandler {
   std::shared_ptr<TaskQueue> task_queue_;
   std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher_;
 
-  int64_t CreateVideoOutput(Player* player);
+  tl::expected<int64_t, ErrorDetails> CreateVideoOutput(Player* player);
 
   void DestroyPlayers();
 
