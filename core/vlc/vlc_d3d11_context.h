@@ -13,7 +13,8 @@ class RenderContext {
   ~RenderContext();
 
   Status<ErrorDetails> Initialize(IDXGIAdapter* preferred_adapter = nullptr);
-  Status<ErrorDetails> Update(unsigned int width, unsigned int height, DXGI_FORMAT format);
+  Status<ErrorDetails> Update(unsigned int width, unsigned int height,
+                              DXGI_FORMAT format);
   void Reset();
 
   inline ID3D11DeviceContext* d3d_device_context_vlc() const {
