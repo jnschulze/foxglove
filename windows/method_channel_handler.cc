@@ -24,7 +24,10 @@ constexpr auto kMethodDisposePlayer = "disposePlayer";
 
 constexpr auto kErrorCodeInvalidArguments = "invalid_args";
 constexpr auto kErrorCodeInvalidId = "invalid_id";
+constexpr auto kErrorCodeEnvCreationFailed = "env_creation_failed";
 constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
+constexpr auto kErrorCodeVideoOutputCreationFailed =
+    "video_output_creation_failed";
 
 flutter::EncodableMap ErrorDetailsToMap(const ErrorDetails& details) {
   flutter::EncodableMap map;
@@ -200,7 +203,7 @@ void MethodChannelHandler::CreatePlayer(
           env =
               std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
           if (!env) {
-            return shared_result->Error("env_creation_failed");
+            return shared_result->Error(kErrorCodeEnvCreationFailed);
           }
         }
 
@@ -214,7 +217,7 @@ void MethodChannelHandler::CreatePlayer(
         auto texture_id = CreateVideoOutput(player.get());
 
         if (!texture_id.has_value()) {
-          return shared_result->Error("video_output_creation_failed",
+          return shared_result->Error(kErrorCodeVideoOutputCreationFailed,
                                       texture_id.error().ToString(),
                                       ErrorDetailsToMap(texture_id.error()));
         }
