@@ -19,28 +19,8 @@ add_library(${PLUGIN_NAME} SHARED
   "player_bridge.cc"
   "resource_registry.cc"
   "video/video_outlet_base.cc"
+  "video/video_outlet_d3d.cc"
 )
-
-set(FOXGLOVE_USE_D3D_TEXTURE ON CACHE BOOL "Enable D3D texture interop")
-if(FOXGLOVE_USE_D3D_TEXTURE)
-  target_compile_definitions("${PLUGIN_NAME}" PRIVATE
-    HAVE_FLUTTER_D3D_TEXTURE
-  )
-  target_sources("${PLUGIN_NAME}" PRIVATE
-    "video/video_outlet_d3d.cc"
-  )
-else()
-  target_sources("${PLUGIN_NAME}" PRIVATE
-    "video/video_outlet.cc"
-  )
-endif()
-
-if(FOXGLOVE_USE_EXPERIMENTAL_ENGINE_FEATURES)
-  target_compile_definitions("${PLUGIN_NAME}" PRIVATE
-    HAVE_FLUTTER_TASK_RUNNER
-  )
-endif()
-
 
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
