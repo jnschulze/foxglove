@@ -8,6 +8,7 @@
 #include "player_bridge.h"
 #include "resource_registry.h"
 #include "third_party/expected.h"
+#include "video/texture_registry.h"
 
 namespace foxglove {
 namespace windows {
@@ -44,7 +45,7 @@ class MethodChannelHandler {
 
  private:
   winrt::com_ptr<IDXGIAdapter> graphics_adapter_;
-  flutter::TextureRegistrar* texture_registrar_;
+  std::unique_ptr<TextureRegistry> texture_registry_;
   flutter::BinaryMessenger* binary_messenger_;
   std::unique_ptr<PlayerResourceRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;

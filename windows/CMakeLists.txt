@@ -18,8 +18,8 @@ add_library(${PLUGIN_NAME} SHARED
   "method_channel_handler.cc"
   "player_bridge.cc"
   "resource_registry.cc"
-  "video/video_outlet_base.cc"
   "video/video_outlet_d3d.cc"
+  "video/texture_registry.cc"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
