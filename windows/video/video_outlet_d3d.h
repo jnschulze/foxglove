@@ -1,11 +1,11 @@
 #pragma once
 
+#include <mutex>
+
 #include "texture_registry.h"
 #include "video/d3d11_output.h"
 #include "video/video_output.h"
 #include "video_outlet_base.h"
-
-#include <mutex>
 
 namespace foxglove {
 namespace windows {
