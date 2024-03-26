@@ -4,13 +4,8 @@
 
 #include "method_channel_utils.h"
 #include "player_environment.h"
-#include "vlc/vlc_environment.h"
-
-#ifdef HAVE_FLUTTER_D3D_TEXTURE
 #include "video/video_outlet_d3d.h"
-#else
-#include "video/video_outlet.h"
-#endif
+#include "vlc/vlc_environment.h"
 
 namespace foxglove {
 namespace windows {
@@ -233,17 +228,10 @@ void MethodChannelHandler::CreatePlayer(
 
 tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
     Player* player) {
-#ifdef HAVE_FLUTTER_D3D_TEXTURE
   auto outlet = std::make_unique<VideoOutletD3d>(texture_registrar_);
   auto texture_id = outlet->texture_id();
   auto video_output =
       player->CreateD3D11Output(std::move(outlet), graphics_adapter_);
-#else
-  auto outlet = std::make_unique<VideoOutlet>(texture_registrar_);
-  auto texture_id = outlet->texture_id();
-  auto video_output = player->CreatePixelBufferOutput(std::move(outlet),
-                                                      PixelFormat::kFormatRGBA);
-#endif
 
   auto result = player->SetVideoOutput(std::move(video_output));
   if (!result.ok()) {
