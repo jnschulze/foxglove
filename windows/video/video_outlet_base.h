@@ -1,33 +1,21 @@
 #pragma once
 
-#include <flutter/method_channel.h>
-#include <flutter/plugin_registrar_windows.h>
-#include <flutter/standard_method_codec.h>
-
-#include <mutex>
+#include "texture_registry.h"
 
 namespace foxglove {
 namespace windows {
-class TextureOutlet {
+
+class VideoOutletBase {
  public:
-  int64_t texture_id() const { return texture_id_; }
+  inline TextureRegistration* registration() const {
+    return texture_registration_.get();
+  }
 
  protected:
-  std::mutex mutex_;
-  bool is_unregistering_ = false;
-  int64_t texture_id_ = -1;
-  flutter::TextureRegistrar* texture_registrar_ = nullptr;
-  TextureOutlet(flutter::TextureRegistrar* texture_registrar);
-  inline bool valid() const { return !is_unregistering_; }
+  std::unique_ptr<flutter::TextureVariant> texture_;
+  std::unique_ptr<TextureRegistration> texture_registration_;
 
-  // Unregisters a texture and synchronously waits for its completion.
-  //
-  // Note:
-  // This function synchronously waits for a callback that gets invoked from the
-  // Flutter raster thread. Be careful to avoid deadlocks.
-  void UnregisterTexture(int64_t texture_id);
-
-  void Unregister();
+  inline bool is_valid() const { return texture_registration_->is_valid(); }
 };
 
 }  // namespace windows

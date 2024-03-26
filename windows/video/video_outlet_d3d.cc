@@ -5,27 +5,41 @@
 namespace foxglove {
 namespace windows {
 
-VideoOutletD3d::VideoOutletD3d(flutter::TextureRegistrar* texture_registrar)
-    : TextureOutlet(texture_registrar) {
+VideoOutletD3d::VideoOutletD3d(TextureRegistry* texture_registry) {
+  state_ = std::make_shared<VideoOutletD3dState>(texture_registry);
+}
+
+VideoOutletD3d::~VideoOutletD3d() {
+  // Asynchronously unregister the texture.
+  // Any texture-related resources held by VideoOutletD3dState must not be
+  // released before Unregister() completes.
+  // Hence, we need to capture state_ here to make it outlive VideoOutletD3d.
+  state_->registration()->Unregister([state = state_ /* Keep state alive */
+  ]() {
+#ifndef NDEBUG
+    std::cerr << "Texture unregistered." << std::endl;
+#endif
+  });
+}
+
+void VideoOutletD3d::Present() { state_->registration()->MarkFrameAvailable(); }
+
+void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
+  state_->SetTexture(std::move(texture));
+}
+
+VideoOutletD3dState::VideoOutletD3dState(TextureRegistry* texture_registry) {
   texture_ =
       std::make_unique<flutter::TextureVariant>(flutter::GpuSurfaceTexture(
           kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
-          [this](size_t width,
-                 size_t height) -> const FlutterDesktopGpuSurfaceDescriptor* {
+          [this]([[maybe_unused]] size_t width, [[maybe_unused]] size_t height)
+              -> const FlutterDesktopGpuSurfaceDescriptor* {
             return surface_descriptor();
           }));
-
-  texture_id_ = texture_registrar_->RegisterTexture(texture_.get());
+  texture_registration_ = texture_registry->RegisterTexture(texture_.get());
 }
 
-void VideoOutletD3d::Present() {
-  const std::lock_guard lock(mutex_);
-  if (valid()) {
-    texture_registrar_->MarkTextureFrameAvailable(texture_id_);
-  }
-}
-
-void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
+void VideoOutletD3dState::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   const std::lock_guard lock(mutex_);
 
   const HANDLE previous_handle = shared_handle_;
@@ -35,7 +49,7 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   surface_descriptor_ = {};
   surface_descriptor_.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
 
-  if (valid() && d3d_texture_) {
+  if (is_valid() && d3d_texture_) {
     winrt::com_ptr<IDXGIResource1> shared_resource;
     if (SUCCEEDED(d3d_texture_->QueryInterface(__uuidof(IDXGIResource1),
                                                shared_resource.put_void())) &&
@@ -50,7 +64,7 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
       surface_descriptor_.visible_height = desc.Height;
       surface_descriptor_.release_context = this;
       surface_descriptor_.release_callback = [](void* release_context) {
-        const auto self = static_cast<VideoOutletD3d*>(release_context);
+        const auto self = static_cast<VideoOutletD3dState*>(release_context);
         // Unlocks mutex locked in surface_descriptor()
         self->d3d_texture_->Release();
         self->mutex_.unlock();
@@ -71,9 +85,10 @@ void VideoOutletD3d::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
   }
 }
 
-const FlutterDesktopGpuSurfaceDescriptor* VideoOutletD3d::surface_descriptor() {
+const FlutterDesktopGpuSurfaceDescriptor*
+VideoOutletD3dState::surface_descriptor() {
   std::unique_lock lock(mutex_);
-  if (valid() && surface_descriptor_.handle) {
+  if (is_valid() && surface_descriptor_.handle) {
     d3d_texture_->AddRef();
 
     // Releases unique_lock without unlocking mutex (gets unlocked in
@@ -84,8 +99,8 @@ const FlutterDesktopGpuSurfaceDescriptor* VideoOutletD3d::surface_descriptor() {
   return nullptr;
 }
 
-VideoOutletD3d::~VideoOutletD3d() {
-  Unregister();
+VideoOutletD3dState::~VideoOutletD3dState() {
+  assert(registration()->state() == TextureRegistrationState::kUnregistered);
 
   if (shared_handle_ != INVALID_HANDLE_VALUE) {
     CloseHandle(shared_handle_);

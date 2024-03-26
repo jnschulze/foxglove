@@ -44,7 +44,7 @@ MethodChannelHandler::MethodChannelHandler(
     winrt::com_ptr<IDXGIAdapter> graphics_adapter)
     : registry_(std::move(resource_registry)),
       binary_messenger_(binary_messenger),
-      texture_registrar_(texture_registrar),
+      texture_registry_(std::make_unique<TextureRegistry>(texture_registrar)),
       graphics_adapter_(std::move(graphics_adapter)),
       task_queue_(std::make_shared<TaskQueue>(
           1, "io.jns.foxglove.methodchannelhandler")),
@@ -228,7 +228,7 @@ void MethodChannelHandler::CreatePlayer(
 
 tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
     Player* player) {
-  auto outlet = std::make_unique<VideoOutletD3d>(texture_registrar_);
+  auto outlet = std::make_unique<VideoOutletD3d>(texture_registry_.get());
   auto texture_id = outlet->texture_id();
   auto video_output =
       player->CreateD3D11Output(std::move(outlet), graphics_adapter_);
