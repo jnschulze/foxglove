@@ -1,29 +1,14 @@
 
 #include "player_bridge.h"
 
-#include <flutter/event_stream_handler_functions.h>
-
-#include <future>
-#include <optional>
-
 #include "media/media.h"
 #include "method_channel_utils.h"
+#include "player_events.h"
 
 namespace foxglove {
 namespace windows {
 
 namespace {
-
-template <typename... Args>
-std::string string_format(const std::string& format, Args... args) {
-  size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
-  if (size <= 0) {
-    throw std::runtime_error("Error during formatting.");
-  }
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args...);
-  return std::string(buf.get(), buf.get() + size - 1);
-}
 
 bool TryConvertLoopMode(int32_t value, LoopMode& loop_mode) {
   if (value < LoopMode::kLastValue) {
@@ -56,25 +41,9 @@ constexpr auto kMethodSetVolume = "setVolume";
 constexpr auto kMethodMute = "mute";
 constexpr auto kMethodUnmute = "unmute";
 
-constexpr auto kEventType = "type";
-constexpr auto kEventValue = "value";
-
 constexpr auto kErrorCodeBadArgs = "invalid_arguments";
 constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
 constexpr auto kErrorVlc = "vlc_error";
-
-enum Events : int32_t {
-  kNone,
-  kInitialized,
-  kPositionChanged,
-  kPlaybackStateChanged,
-  kMediaChanged,
-  kRateChanged,
-  kVolumeChanged,
-  kMuteChanged,
-  kVideoDimensionsChanged,
-  kIsSeekableChanged
-};
 
 }  // namespace
 
@@ -82,90 +51,27 @@ PlayerBridge::PlayerBridge(
     flutter::BinaryMessenger* messenger, std::shared_ptr<TaskQueue> task_queue,
     Player* player,
     std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher)
-    : player_(player),
-      task_queue_(std::move(task_queue)),
-      main_thread_dispatcher_(main_thread_dispatcher) {
-  auto method_channel_name = string_format("foxglove/%I64i", player->id());
-  method_channel_ =
-      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          messenger, method_channel_name,
-          &flutter::StandardMethodCodec::GetInstance());
-
-  const auto event_channel_name =
-      string_format("foxglove/%I64i/events", player->id());
-  event_channel_ =
-      std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
-          messenger, event_channel_name,
-          &flutter::StandardMethodCodec::GetInstance());
+    : player_(player), task_queue_(std::move(task_queue)) {
+  channels_ = std::make_shared<PlayerChannels>(
+      messenger, player->id(), std::move(main_thread_dispatcher));
 }
 
-PlayerBridge::~PlayerBridge() { assert(!event_sink_); }
-
-void PlayerBridge::RegisterChannelHandlers(Closure callback) {
-  main_thread_dispatcher_->Dispatch([this, callback]() {
-    assert(IsMessengerValid());
-    method_channel_->SetMethodCallHandler(
-        [this](const auto& call, auto result) {
-          HandleMethodCall(call, std::move(result));
-        });
-
-    auto handler = std::make_unique<
-        flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-        [this](const flutter::EncodableValue* arguments,
-               std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&&
-                   events) {
-          SetEventSink(std::move(events));
-          return nullptr;
-        },
-        [this](const flutter::EncodableValue* arguments) {
-          SetEventSink(nullptr);
-          return nullptr;
-        });
-    event_channel_->SetStreamHandler(std::move(handler));
-
-    if (callback) {
-      callback();
-    }
-  });
+void PlayerBridge::RegisterChannelHandlers(Closure callback) const {
+  channels_->Register(
+      [this](const auto& call, auto result) {
+        HandleMethodCall(call, std::move(result));
+      },
+      std::move(callback));
 }
 
-bool PlayerBridge::UnregisterChannelHandlers(Closure callback) {
-  SetEventSink(nullptr);
-
-  if (!IsMessengerValid()) {
-    return false;
-  }
-
-  main_thread_dispatcher_->Dispatch([this, callback]() {
-    // Channel handlers must not be unset during plugin destruction
-    // See https://github.com/flutter/flutter/issues/118611
-    if (IsMessengerValid()) {
-      method_channel_->SetMethodCallHandler(nullptr);
-      event_channel_->SetStreamHandler(nullptr);
-    }
-
-    if (callback) {
-      callback();
-    }
-  });
-
-  return true;
-}
-
-void PlayerBridge::SetEventSink(
-    std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink) {
-  const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-  event_sink_ = std::move(event_sink);
-  if (event_sink_) {
-    event_sink_->Success(flutter::EncodableValue(
-        flutter::EncodableMap{{kEventType, Events::kInitialized}}));
-  }
+bool PlayerBridge::UnregisterChannelHandlers(Closure callback) const {
+  return channels_->Unregister(std::move(callback));
 }
 
 void PlayerBridge::Enqueue(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
         method_result,
-    std::function<void(MethodResult result)> handler) {
+    std::function<void(MethodResult result)> handler) const {
   MethodResult shared_result = std::move(method_result);
   if (!task_queue_->Enqueue([shared_result, handler = std::move(handler)]() {
         handler(shared_result);
@@ -176,7 +82,8 @@ void PlayerBridge::Enqueue(
 
 void PlayerBridge::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+    const {
   if (!IsValid()) {
     result->Error(kErrorCodePluginTerminated);
     return;
@@ -317,15 +224,8 @@ void PlayerBridge::HandleMethodCall(
   result->NotImplemented();
 }
 
-void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) {
-  main_thread_dispatcher_->Dispatch([this, event] {
-    if (IsMessengerValid()) {
-      const std::lock_guard<std::mutex> lock(event_sink_mutex_);
-      if (event_sink_) {
-        event_sink_->Success(event);
-      }
-    }
-  });
+void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) const {
+  channels_->EmitEvent(event);
 }
 
 void PlayerBridge::OnMediaChanged(const Media& media) {
