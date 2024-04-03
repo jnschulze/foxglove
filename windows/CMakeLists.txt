@@ -17,6 +17,7 @@ add_library(${PLUGIN_NAME} SHARED
   "message_window.cc"
   "method_channel_handler.cc"
   "player_bridge.cc"
+  "player_channels.cc"
   "resource_registry.cc"
   "video/video_outlet_d3d.cc"
   "video/texture_registry.cc"
