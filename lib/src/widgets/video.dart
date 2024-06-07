@@ -32,6 +32,7 @@ class Video extends StatefulWidget {
   final Clip clipBehavior;
 
   const Video({
+    super.key,
     required this.player,
     this.fit = BoxFit.contain,
     this.alignment = Alignment.center,
@@ -39,11 +40,10 @@ class Video extends StatefulWidget {
     this.backgroundColor = Colors.black,
     this.filterQuality = FilterQuality.low,
     this.clipBehavior = Clip.none,
-    Key? key,
-  }) : super(key: key);
+  });
 
   @override
-  _VideoState createState() => _VideoState();
+  State<Video> createState() => _VideoState();
 }
 
 class _VideoState extends State<Video> {

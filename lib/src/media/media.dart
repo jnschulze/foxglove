@@ -59,7 +59,7 @@ class Media implements MediaSource {
       case 'directShow':
         return Media.directShow(rawUrl: url);
       default:
-        throw "Unsupported media type: $type";
+        throw 'Unsupported media type: $type';
     }
   }
 
@@ -77,10 +77,12 @@ class Media implements MediaSource {
   int get hashCode => Object.hash(mediaType, resource);
 
   @override
-  bool operator ==(Object other) =>
-      other is Media &&
-      other.mediaType == mediaType &&
-      other.resource == resource;
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Media &&
+        other.mediaType == mediaType &&
+        other.resource == resource;
+  }
 
   @override
   String toString() => '[$mediaType]$resource';

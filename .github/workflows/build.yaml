@@ -18,4 +18,5 @@ jobs:
           channel: "stable"
       - run: flutter config --enable-windows-desktop
       - run: flutter pub get
+      - run: flutter analyze
       - run: flutter build windows

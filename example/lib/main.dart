@@ -1,21 +1,22 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'dart:async';
-
 import 'package:foxglove/foxglove.dart';
 import 'package:logging/logging.dart';
 
 void main() {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
-    print('${record.level.name}: ${record.time}: ${record.message}');
+    // ignore: avoid_print
+    print(
+        '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
   });
   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
