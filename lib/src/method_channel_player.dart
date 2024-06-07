@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:foxglove/foxglove.dart';
+import 'package:foxglove/src/finalizing_player_proxy.dart';
 import 'package:logging/logging.dart';
 
 enum _PlatformEvent {
@@ -44,7 +45,8 @@ mixin _StreamControllers {
 typedef DisposeCallback = Future<void> Function();
 
 class MethodChannelPlayer extends PlayerPlatform {
-  final Logger _logger = Logger("Foxglove:MethodChannelPlayer");
+  static final _logger = Logger('foxglove:MethodChannelPlayer');
+
   static final MethodChannel _channel = const MethodChannel('foxglove')
     ..invokeMethod('init');
 
@@ -65,7 +67,7 @@ class MethodChannelPlayer extends PlayerPlatform {
       {int? environmentId, List<String>? environmentArgs}) async {
     try {
       _logger.fine(
-          "Creating player with environmentId `$environmentId` and args `$environmentArgs`");
+          'Creating player with environmentId `$environmentId` and args `$environmentArgs`');
       final result = await _channel.invokeMapMethod(
           'createPlayer', <String, dynamic>{
         'environmentId': environmentId,
@@ -76,15 +78,16 @@ class MethodChannelPlayer extends PlayerPlatform {
       final textureId = result['texture_id'] as int;
 
       _logger.fine('Created player with id: $playerId');
-      return _PlayerImpl(
+      final player = _PlayerImpl(
           platform: this,
           id: playerId,
           textureId: textureId,
           disposeCallback: () async {
             await _disposePlayer(playerId);
           });
+      return FinalizingPlayerProxy(player);
     } catch (e) {
-      _logger.severe("Error creating player: $e");
+      _logger.severe('Error creating player: $e', e);
       rethrow;
     }
   }
@@ -111,7 +114,7 @@ class _PlayerImpl with _StreamControllers implements Player {
   final EventChannel _eventChannel;
   StreamSubscription? _eventChannelSubscription;
   bool _isDisposed = false;
-  final Logger _logger = Logger('Foxglove:Player');
+  final Logger _logger = Logger('foxglove:Player');
   final _eventChannelReady = Completer<void>();
 
   _PlayerImpl(
@@ -166,9 +169,9 @@ class _PlayerImpl with _StreamControllers implements Player {
     }
     await _eventChannelReady.future;
 
-    _logger.finest('Invoking $methodName');
+    _logger.fine('Invoking $methodName');
     final result = await _methodChannel.invokeMethod<T>(methodName, arguments);
-    _logger.finest('Invoked $methodName');
+    _logger.fine('Invoked $methodName');
     return result;
   }
 

@@ -4,7 +4,7 @@ import 'package:foxglove/src/media/media_source.dart';
 import 'package:foxglove/src/method_channel_player.dart';
 import 'package:foxglove/src/player_state.dart';
 
-abstract class Player {
+abstract interface class Player {
   // Player id.
   int get id;
 

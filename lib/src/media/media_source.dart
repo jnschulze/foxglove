@@ -1,3 +1,3 @@
-abstract class MediaSource {
+abstract interface class MediaSource {
   Map<String, dynamic> toJson();
 }

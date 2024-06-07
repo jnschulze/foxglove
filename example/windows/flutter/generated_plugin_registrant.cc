@@ -6,9 +6,9 @@
 
 #include "generated_plugin_registrant.h"
 
-#include <foxglove/foxglove_plugin.h>
+#include <foxglove/foxglove_plugin_c_api.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
-  FoxglovePluginRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("FoxglovePlugin"));
+  FoxglovePluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FoxglovePluginCApi"));
 }
