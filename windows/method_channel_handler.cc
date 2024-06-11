@@ -131,7 +131,8 @@ void MethodChannelHandler::InitPlatform(
 void MethodChannelHandler::ConfigureLogging(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (const auto map = std::get_if<flutter::EncodableMap>(method_call.arguments())) {
+  if (const auto map =
+          std::get_if<flutter::EncodableMap>(method_call.arguments())) {
     LogConfig config;
     if (const auto enable_console_logging =
             channels::TryGetMapElement<bool>(map, "enableConsoleLogging")) {
