@@ -57,6 +57,22 @@ abstract interface class Player {
   Future<void> dispose();
 }
 
+// Must be kept in sync with native-side enum.
+enum PlatformLogLevel { trace, debug, info, warning, error, fatal }
+
+class PlatformLogConfig {
+  final bool? enableConsoleLogging;
+  final PlatformLogLevel? consoleLogLevel;
+  final String? fileLogPath;
+  final PlatformLogLevel? fileLogLevel;
+
+  const PlatformLogConfig(
+      {this.enableConsoleLogging,
+      this.consoleLogLevel,
+      this.fileLogPath,
+      this.fileLogLevel});
+}
+
 abstract class PlayerPlatform {
   static PlayerPlatform _instance = MethodChannelPlayer();
 
@@ -72,6 +88,10 @@ abstract class PlayerPlatform {
   static set instance(PlayerPlatform instance) {
     _instance = instance;
   }
+
+  /// Configures native logging.
+  /// This function can be called multiple times.
+  Future<void> configureLogging(PlatformLogConfig logConfig);
 
   /// Attempts to create an enviroment with the given [args]
   Future<int> createEnvironment({List<String>? args});
