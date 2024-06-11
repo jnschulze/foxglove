@@ -32,6 +32,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initPlatformState() async {
+    await PlayerPlatform.instance.configureLogging(const PlatformLogConfig(
+        enableConsoleLogging: true,
+        consoleLogLevel: PlatformLogLevel.trace,
+        fileLogPath: 'platform_log.txt',
+        fileLogLevel: PlatformLogLevel.trace));
+
     final player = await PlayerPlatform.instance
         .createPlayer(environmentArgs: ['--no-osd']);
     _player = player;

@@ -1,7 +1,7 @@
 #include "foxglove_plugin.h"
 
-#include <sstream>
-
+#include "base/string_utils.h"
+#include "logging.h"
 #include "plugin_state.h"
 
 namespace foxglove {
@@ -19,12 +19,15 @@ void FoxglovePlugin::RegisterWithRegistrar(
 FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
                                flutter::TextureRegistrar* texture_registrar,
                                flutter::FlutterView* view) {
+  SetupLogging();
+
   winrt::com_ptr<IDXGIAdapter> graphics_adapter;
   graphics_adapter.attach(view->GetGraphicsAdapter());
   if (graphics_adapter) {
     DXGI_ADAPTER_DESC desc;
     if (SUCCEEDED(graphics_adapter->GetDesc(&desc))) {
-      std::wcerr << "Graphics adapter: " << desc.Description << std::endl;
+      LOG(INFO) << "Graphics adapter: " << util::Utf8FromUtf16(desc.Description)
+                << std::endl;
     }
   }
 
@@ -53,5 +56,4 @@ FoxglovePlugin::~FoxglovePlugin() {
 }
 
 }  // namespace windows
-
 }  // namespace foxglove

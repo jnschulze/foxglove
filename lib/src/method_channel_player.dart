@@ -51,6 +51,16 @@ class MethodChannelPlayer extends PlayerPlatform {
     ..invokeMethod('init');
 
   @override
+  Future<void> configureLogging(PlatformLogConfig logConfig) async {
+    await _channel.invokeMethod('configureLogging', <String, dynamic>{
+      'enableConsoleLogging': logConfig.enableConsoleLogging,
+      'consoleLogLevel': logConfig.consoleLogLevel?.index,
+      'fileLogPath': logConfig.fileLogPath,
+      'fileLogLevel': logConfig.fileLogLevel?.index
+    });
+  }
+
+  @override
   Future<int> createEnvironment({List<String>? args}) async {
     final envId = await _channel.invokeMethod<int>(
         'createEnvironment', <String, dynamic>{'args': args}) as int;

@@ -2,6 +2,7 @@
 
 #include <future>
 
+#include "logging.h"
 #include "method_channel_utils.h"
 #include "player_environment.h"
 #include "video/video_outlet_d3d.h"
@@ -12,6 +13,7 @@ namespace windows {
 
 namespace {
 constexpr auto kMethodInitPlatform = "init";
+constexpr auto kMethodConfigureLogging = "configureLogging";
 constexpr auto kMethodCreateEnvironment = "createEnvironment";
 constexpr auto kMethodDisposeEnvironment = "disposeEnvironment";
 constexpr auto kMethodCreatePlayer = "createPlayer";
@@ -82,8 +84,14 @@ void MethodChannelHandler::HandleMethodCall(
 
   const auto& method_name = method_call.method_name();
 
+  LOG(TRACE) << "Received method call: " << method_name << std::endl;
+
   if (method_name.compare(kMethodInitPlatform) == 0) {
     return InitPlatform(method_call, std::move(result));
+  }
+
+  if (method_name.compare(kMethodConfigureLogging) == 0) {
+    return ConfigureLogging(method_call, std::move(result));
   }
 
   if (method_name.compare(kMethodCreateEnvironment) == 0) {
@@ -120,6 +128,35 @@ void MethodChannelHandler::InitPlatform(
   }
 }
 
+void MethodChannelHandler::ConfigureLogging(
+    const flutter::MethodCall<flutter::EncodableValue>& method_call,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  if (const auto map = std::get_if<flutter::EncodableMap>(method_call.arguments())) {
+    LogConfig config;
+    if (const auto enable_console_logging =
+            channels::TryGetMapElement<bool>(map, "enableConsoleLogging")) {
+      config.enable_console_logging = *enable_console_logging;
+    }
+    if (const auto console_log_level =
+            channels::TryGetMapElement<int32_t>(map, "consoleLogLevel")) {
+      config.console_log_level = GetLogLevel(*console_log_level);
+    }
+    if (const auto file_log_path =
+            channels::TryGetMapElement<std::string>(map, "fileLogPath")) {
+      config.file_log_path = *file_log_path;
+    }
+    if (const auto file_log_level =
+            channels::TryGetMapElement<int32_t>(map, "fileLogLevel")) {
+      config.file_log_level = GetLogLevel(*file_log_level);
+    }
+    SetupLogging(config);
+    result->Success();
+    return;
+  }
+
+  result->Error(kErrorCodeInvalidArguments);
+}
+
 void MethodChannelHandler::CreateEnvironment(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -135,6 +172,7 @@ void MethodChannelHandler::CreateEnvironment(
       shared_result = std::move(result);
   if (!task_queue_->Enqueue(
           [this, args = std::move(env_args), shared_result]() {
+            LOG(TRACE) << "Attempting to create environment" << std::endl;
             auto env =
                 std::make_shared<foxglove::VlcEnvironment>(args, task_queue_);
             auto id = env->id();
@@ -170,6 +208,8 @@ void MethodChannelHandler::DisposeEnvironment(
 void MethodChannelHandler::CreatePlayer(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  LOG(TRACE) << "Attempting to create player" << std::endl;
+
   std::optional<int64_t> environment_id;
   std::vector<std::string> environment_args;
   if (auto map = std::get_if<flutter::EncodableMap>(method_call.arguments())) {
@@ -189,26 +229,35 @@ void MethodChannelHandler::CreatePlayer(
                              shared_result, this]() {
         std::shared_ptr<foxglove::PlayerEnvironment> env;
         if (environment_id.has_value()) {
+          LOG(TRACE) << "Creating player with existing env" << std::endl;
           env =
               registry_->environments()->GetEnvironment(environment_id.value());
           if (!env) {
+            LOG(ERROR) << "Invalid environment id" << std::endl;
             return shared_result->Error(kErrorCodeInvalidId);
           }
         } else {
+          LOG(TRACE) << "Creating player with implicit env" << std::endl;
           env =
               std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
           if (!env) {
+            LOG(ERROR) << "Creating environment failed" << std::endl;
             return shared_result->Error(kErrorCodeEnvCreationFailed);
           }
         }
 
         auto player = env->CreatePlayer();
+        LOG(TRACE) << "Created player" << std::endl;
+
         auto bridge = std::make_unique<PlayerBridge>(binary_messenger_,
                                                      task_queue_, player.get(),
                                                      main_thread_dispatcher_);
+        LOG(TRACE) << "Created PlayerBridge" << std::endl;
+
         auto bridge_ptr = bridge.get();
         player->SetEventDelegate(std::move(bridge));
         auto id = player->id();
+
         auto texture_id = CreateVideoOutput(player.get());
 
         if (!texture_id.has_value()) {
@@ -217,11 +266,14 @@ void MethodChannelHandler::CreatePlayer(
                                       ErrorDetailsToMap(texture_id.error()));
         }
         registry_->players()->InsertPlayer(id, std::move(player));
+        LOG(TRACE) << "Attempting to register channel handlers" << std::endl;
         bridge_ptr->RegisterChannelHandlers([=]() {
+          LOG(TRACE) << "Registering channel handlers succeeded" << std::endl;
           shared_result->Success(flutter::EncodableMap(
               {{"player_id", id}, {"texture_id", texture_id.value()}}));
         });
       })) {
+    LOG(ERROR) << "Plugin already terminated" << std::endl;
     shared_result->Error(kErrorCodePluginTerminated);
   }
 }
@@ -235,9 +287,13 @@ tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
 
   auto result = player->SetVideoOutput(std::move(video_output));
   if (!result.ok()) {
+    LOG(ERROR) << "Creating video output failed: " << result.error().message()
+               << std::endl;
     return tl::make_unexpected(result.error());
   }
 
+  LOG(TRACE) << "Created video output with texture id: " << texture_id
+             << std::endl;
   return texture_id;
 }
 
@@ -247,18 +303,24 @@ void MethodChannelHandler::DisposePlayer(
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
-    if (!task_queue_->Enqueue(
-            [id = *id, shared_result, registry = registry_.get(), this]() {
-              auto player = registry->players()->RemovePlayer(id);
-              if (player) {
-                if (!UnregisterChannelHandlers(
-                        player.get(), [=]() { shared_result->Success(); })) {
+    LOG(TRACE) << "Attempting to dispose player with id: " << *id << std::endl;
+    if (!task_queue_->Enqueue([id = *id, shared_result,
+                               registry = registry_.get(), this]() {
+          auto player = registry->players()->RemovePlayer(id);
+          if (player) {
+            LOG(TRACE) << "Attempting to unregister channel handlers"
+                       << std::endl;
+            if (!UnregisterChannelHandlers(player.get(), [=]() {
+                  LOG(TRACE) << "Unregistered channel handlers" << std::endl;
                   shared_result->Success();
-                }
-              } else {
-                return shared_result->Error(kErrorCodeInvalidId);
-              }
-            })) {
+                })) {
+              shared_result->Success();
+            }
+          } else {
+            LOG(ERROR) << "Player with id " << id << " not found" << std::endl;
+            return shared_result->Error(kErrorCodeInvalidId);
+          }
+        })) {
       shared_result->Error(kErrorCodePluginTerminated);
     }
   } else {
