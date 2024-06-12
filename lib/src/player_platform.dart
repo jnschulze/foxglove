@@ -2,6 +2,7 @@ import 'package:foxglove/src/base.dart';
 import 'package:foxglove/src/enums.dart';
 import 'package:foxglove/src/media/media_source.dart';
 import 'package:foxglove/src/method_channel_player.dart';
+import 'package:foxglove/src/platform_log_config.dart';
 import 'package:foxglove/src/player_state.dart';
 
 abstract interface class Player {
@@ -55,22 +56,6 @@ abstract interface class Player {
   Future<void> mute();
   Future<void> unmute();
   Future<void> dispose();
-}
-
-// Must be kept in sync with native-side enum.
-enum PlatformLogLevel { trace, debug, info, warning, error, fatal }
-
-class PlatformLogConfig {
-  final bool? enableConsoleLogging;
-  final PlatformLogLevel? consoleLogLevel;
-  final String? fileLogPath;
-  final PlatformLogLevel? fileLogLevel;
-
-  const PlatformLogConfig(
-      {this.enableConsoleLogging,
-      this.consoleLogLevel,
-      this.fileLogPath,
-      this.fileLogLevel});
 }
 
 abstract class PlayerPlatform {
