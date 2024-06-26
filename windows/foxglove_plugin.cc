@@ -1,7 +1,7 @@
 #include "foxglove_plugin.h"
 
+#include "base/logging.h"
 #include "base/string_utils.h"
-#include "logging.h"
 #include "plugin_state.h"
 
 namespace foxglove {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <iostream>
 #include <memory>
 #include <mutex>
 
+#include "base/logging.h"
 #include "base/thread_checker.h"
 #include "events.h"
 #include "player.h"
@@ -19,7 +19,8 @@ namespace foxglove {
 #define PLAYER_LOG(msg)
 #else
 #define PLAYER_LOG(msg) \
-  std::cerr << "Player [" << id() << "]: " << msg << std::endl;
+  LOG(TRACE) << "Player [" << id() << "]: " << msg << std::endl;
+
 #endif
 
 struct VlcMediaState {
@@ -80,7 +81,10 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     SetupEventHandlers();
   }
 
-  ~Impl() { assert(thread_checker_.IsCreationThreadCurrent()); }
+  ~Impl() {
+    assert(thread_checker_.IsCreationThreadCurrent());
+    LOG(TRACE) << "Destructing VlcPlayer::Impl" << std::endl;
+  }
 
   void SetEventDelegate(std::unique_ptr<PlayerEventDelegate> event_delegate) {
     assert(thread_checker_.IsCreationThreadCurrent());
@@ -356,7 +360,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
         assert(media);
         current_media = std::make_unique<Media>(*media);
       } else {
-        std::cerr << "Media has just changed again" << std::endl;
+        LOG(ERROR) << "Media has just changed again" << std::endl;
       }
     }
 

@@ -2,7 +2,7 @@
 
 #include <future>
 
-#include "logging.h"
+#include "base/logging.h"
 #include "method_channel_utils.h"
 #include "player_environment.h"
 #include "video/video_outlet_d3d.h"
@@ -305,6 +305,7 @@ void MethodChannelHandler::DisposePlayer(
       shared_result = std::move(result);
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
     LOG(TRACE) << "Attempting to dispose player with id: " << *id << std::endl;
+
     if (!task_queue_->Enqueue([id = *id, shared_result,
                                registry = registry_.get(), this]() {
           auto player = registry->players()->RemovePlayer(id);

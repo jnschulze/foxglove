@@ -1,5 +1,6 @@
 #include "vlc/vlc_player.h"
 
+#include "base/logging.h"
 #include "vlc/vlc_d3d11_output.h"
 #include "vlc/vlc_pixel_buffer_output.h"
 #include "vlc_player_impl.h"
@@ -23,7 +24,7 @@ VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment) {
   impl_ = std::make_shared<Impl>(std::move(environment), id());
 }
 
-VlcPlayer::~VlcPlayer() {}
+VlcPlayer::~VlcPlayer() { LOG(TRACE) << "Destructing VlcPlayer" << std::endl; }
 
 std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
     std::unique_ptr<PixelBufferOutputDelegate> output_delegate,

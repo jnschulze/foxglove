@@ -760,6 +760,13 @@ protected:
         if (pos != std::string::npos)
             result.replace(pos, 9, metadata.function ? metadata.function.name : "");
 
+        pos = result.find("#thread");
+        if (pos != std::string::npos) {
+            std::stringstream ss;
+            ss << std::this_thread::get_id();
+            result.replace(pos, 7, ss.str());
+        }
+
         pos = result.find("#message");
         if (pos != std::string::npos)
         {
