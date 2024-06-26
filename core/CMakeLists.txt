@@ -71,6 +71,7 @@ endif()
 
 add_library(${LIBRARY_NAME} STATIC
   base/error_details.cc
+  base/logging.cc
   base/string_utils.cc
   base/task_queue.cc
   events.cc

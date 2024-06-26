@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "base/closure.h"
+#include "base/thread_checker.h"
 #include "main_thread_dispatcher.h"
 #include "plugin_state.h"
 
@@ -24,7 +25,10 @@ class PlayerChannels : public std::enable_shared_from_this<PlayerChannels> {
   void EmitEvent(const flutter::EncodableValue& event) const;
 
  private:
+  ThreadChecker thread_checker_;
   mutable std::mutex event_sink_mutex_;
+  std::mutex method_call_handler_mutex_;
+  flutter::MethodCallHandler<flutter::EncodableValue> method_call_handler_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
@@ -35,6 +39,9 @@ class PlayerChannels : public std::enable_shared_from_this<PlayerChannels> {
   inline static bool IsMessengerValid() { return PluginState::IsValid(); }
   void SetEventSink(
       std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink);
+  void HandleMethodCall(
+      const flutter::MethodCall<flutter::EncodableValue>& call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 };
 
 }  // namespace windows

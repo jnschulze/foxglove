@@ -3,6 +3,7 @@
 
 #include <flutter/event_stream_handler_functions.h>
 
+#include "base/logging.h"
 #include "player_events.h"
 
 namespace foxglove {
@@ -44,12 +45,22 @@ PlayerChannels::PlayerChannels(
 void PlayerChannels::Register(
     flutter::MethodCallHandler<flutter::EncodableValue> method_call_handler,
     Closure callback) {
+  assert(thread_checker_.IsCreationThreadCurrent());
+
+  {
+    const std::lock_guard lock(method_call_handler_mutex_);
+    method_call_handler_ = method_call_handler;
+  }
+
   main_thread_dispatcher_->Dispatch([self = shared_from_this(),
-                                     method_call_handler =
-                                         std::move(method_call_handler),
                                      callback = std::move(callback)]() {
     assert(IsMessengerValid());
-    self->method_channel_->SetMethodCallHandler(method_call_handler);
+    self->method_channel_->SetMethodCallHandler(
+        [=](const flutter::MethodCall<flutter::EncodableValue>& method_call,
+            std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                result) {
+          self->HandleMethodCall(method_call, std::move(result));
+        });
 
     auto stream_handler = std::make_unique<
         flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
@@ -72,6 +83,12 @@ void PlayerChannels::Register(
 }
 
 bool PlayerChannels::Unregister(Closure callback) {
+  assert(thread_checker_.IsCreationThreadCurrent());
+  {
+    const std::lock_guard lock(method_call_handler_mutex_);
+    method_call_handler_ = nullptr;
+  }
+
   SetEventSink(nullptr);
 
   if (!IsMessengerValid()) {
@@ -118,6 +135,19 @@ void PlayerChannels::SetEventSink(
   if (event_sink_) {
     event_sink_->Success(flutter::EncodableValue(
         flutter::EncodableMap{{kEventType, Events::kInitialized}}));
+  }
+}
+
+void PlayerChannels::HandleMethodCall(
+    const flutter::MethodCall<flutter::EncodableValue>& call,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  const std::lock_guard lock(method_call_handler_mutex_);
+
+  LOG(TRACE) << "Got method call: " << call.method_name() << std::endl;
+  if (method_call_handler_) {
+    method_call_handler_(call, std::move(result));
+  } else {
+    LOG(WARNING) << "No handler anymore" << std::endl;
   }
 }
 

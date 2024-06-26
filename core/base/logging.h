@@ -8,7 +8,6 @@
 #pragma warning(pop)
 
 namespace foxglove {
-namespace windows {
 
 typedef AixLog::Severity LogLevel;
 
@@ -39,5 +38,4 @@ inline LogLevel GetLogLevel(int level) {
 void SetupLogging();
 void SetupLogging(const LogConfig& config);
 
-}  // namespace windows
 }  // namespace foxglove

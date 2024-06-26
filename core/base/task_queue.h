@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "closure.h"
+#include "logging.h"
 
 namespace foxglove {
 
@@ -30,6 +31,7 @@ class TaskQueue {
     pending_tasks_.emplace_back(std::forward<F>(task));
     lock.unlock();
     task_pending_cv_.notify_one();
+    LOG(TRACE) << "Notified condition variable" << std::endl;
     return true;
   }
 
@@ -41,6 +43,7 @@ class TaskQueue {
     pending_tasks_.push_back(task);
     lock.unlock();
     task_pending_cv_.notify_one();
+    LOG(TRACE) << "Notified condition variable" << std::endl;
     return true;
   }
 

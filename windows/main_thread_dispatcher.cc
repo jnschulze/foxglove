@@ -30,11 +30,13 @@ void MainThreadDispatcher::Dispatch(Task task) {
   if (RunsTasksOnCurrentThread()) {
     task();
   } else {
-    const std::lock_guard<std::mutex> lock(tasks_mutex_);
-    if (terminated_) {
-      return;
+    {
+      const std::lock_guard<std::mutex> lock(tasks_mutex_);
+      if (terminated_) {
+        return;
+      }
+      tasks_.push_back(std::move(task));
     }
-    tasks_.push_back(std::move(task));
     message_window_->WakeUp();
   }
 }

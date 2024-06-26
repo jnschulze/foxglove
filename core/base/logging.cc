@@ -4,7 +4,6 @@
 #include <iostream>
 
 namespace foxglove {
-namespace windows {
 
 void SetupLogging() {
   AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace);
@@ -15,7 +14,8 @@ void SetupLogging(const LogConfig& config) {
 
   if (config.enable_console_logging.value_or(false)) {
     auto level = config.console_log_level.value_or(LogLevel::trace);
-    log_sinks.emplace_back(std::make_shared<AixLog::SinkCerr>(level));
+    log_sinks.emplace_back(std::make_shared<AixLog::SinkCerr>(
+        level, "%Y-%m-%d %H-%M-%S.#ms [#severity] [#thread] (#tag_func)"));
   }
 
   if (config.file_log_path.has_value()) {
@@ -27,10 +27,10 @@ void SetupLogging(const LogConfig& config) {
     std::filesystem::create_directories(log_directory, ec);
 
     log_sinks.emplace_back(std::make_shared<AixLog::SinkFile>(
-        level, config.file_log_path.value()));
+        level, config.file_log_path.value(),
+        "%Y-%m-%d %H-%M-%S.#ms [#severity] [#thread] (#tag_func)"));
   }
   AixLog::Log::init(log_sinks);
 }
 
-}  // namespace windows
 }  // namespace foxglove
