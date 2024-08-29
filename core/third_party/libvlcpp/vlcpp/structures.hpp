@@ -461,40 +461,6 @@ class AudioOutputDeviceDescription
 };
 
 ///
-/// \brief The TrackDescription class describes a track
-///
-class TrackDescription
-{
-public:
-    ///
-    /// \brief id The track id
-    ///
-    int id() const
-    {
-        return m_id;
-    }
-
-    ///
-    /// \brief name The track name
-    ///
-    const std::string& name() const
-    {
-        return m_name;
-    }
-
-    explicit TrackDescription( libvlc_track_description_t* c )
-        : m_id( c->i_id )
-    {
-        if ( c->psz_name != nullptr )
-            m_name = c->psz_name;
-    }
-
-private:
-    int m_id;
-    std::string m_name;
-};
-
-///
 /// \brief The TitleDescription class describes a title
 ///
 class TitleDescription

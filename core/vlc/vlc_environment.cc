@@ -30,12 +30,6 @@ VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
     instance_ = std::make_unique<VlcInstance>(static_cast<int32_t>(opts.size()),
                                               opts.data());
   }
-
-#ifndef NDEBUG
-  libvlc_set_exit_handler(
-      instance_->get(),
-      [](void* opaque) { std::cerr << "libvlc exit" << std::endl; }, nullptr);
-#endif
 }
 
 VlcEnvironment::~VlcEnvironment() {
