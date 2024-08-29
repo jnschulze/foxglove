@@ -104,41 +104,6 @@ public:
         return m_obj == another.m_obj;
     }
 
-
-    /**
-     * Try to start a user interface for the libvlc instance.
-     *
-     * \param name  interface name, or empty string for default
-     */
-    bool addIntf(const std::string& name)
-    {
-        return libvlc_add_intf( *this, name.length() > 0 ? name.c_str() : nullptr ) == 0;
-    }
-
-    /**
-     * Registers a callback for the LibVLC exit event. This is mostly useful
-     * if the VLC playlist and/or at least one interface are started with
-     * libvlc_playlist_play() or Instance::addIntf() respectively. Typically,
-     * this function will wake up your application main loop (from another
-     * thread).
-     *
-     * \note This function should be called before the playlist or interface
-     * are started. Otherwise, there is a small race condition: the exit
-     * event could be raised before the handler is registered.
-     *
-     * \param cb  callback to invoke when LibVLC wants to exit, or nullptr to
-     * disable the exit handler (as by default). It is expected to be a
-     * std::function<void()>, or an equivalent Callable type
-     */
-    template <typename ExitCb>
-    void setExitHandler(ExitCb&& exitCb)
-    {
-        static_assert(signature_match_or_nullptr<ExitCb, void()>::value, "Mismatched exit callback" );
-        libvlc_set_exit_handler( *this,
-            CallbackWrapper<(unsigned int)CallbackIdx::Exit, void(*)(void*)>::wrap( *m_callbacks, std::forward<ExitCb>( exitCb ) ),
-            m_callbacks.get() );
-    }
-
     /**
      * Sets the application name. LibVLC passes this as the user agent string
      * when a protocol requires it.
