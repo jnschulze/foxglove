@@ -1,8 +1,8 @@
 #pragma once
 
-#include <deque>
 #include <functional>
 #include <mutex>
+#include <vector>
 
 #include "base/thread_checker.h"
 #include "message_window.h"
@@ -20,7 +20,6 @@ class MainThreadDispatcher {
   ~MainThreadDispatcher();
 
   void Dispatch(Task task);
-  void Terminate();
   bool RunsTasksOnCurrentThread() const {
     return thread_checker_.IsCreationThreadCurrent();
   }
@@ -28,9 +27,8 @@ class MainThreadDispatcher {
  private:
   ThreadChecker thread_checker_;
   std::mutex tasks_mutex_;
-  std::deque<Task> tasks_;
+  std::vector<Task> tasks_;
   std::unique_ptr<MessageWindow> message_window_;
-  bool terminated_;
 
   void ProcessTasks();
 };
