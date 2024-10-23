@@ -44,13 +44,13 @@ MethodChannelHandler::MethodChannelHandler(
     flutter::BinaryMessenger* binary_messenger,
     flutter::TextureRegistrar* texture_registrar,
     winrt::com_ptr<IDXGIAdapter> graphics_adapter)
-    : registry_(std::move(resource_registry)),
-      binary_messenger_(binary_messenger),
-      texture_registry_(std::make_unique<TextureRegistry>(texture_registrar)),
+    : main_thread_dispatcher_(std::make_shared<MainThreadDispatcher>()),
       graphics_adapter_(std::move(graphics_adapter)),
+      texture_registry_(std::make_unique<TextureRegistry>(texture_registrar)),
+      binary_messenger_(binary_messenger),
+      registry_(std::move(resource_registry)),
       task_queue_(std::make_shared<TaskQueue>(
-          1, "io.jns.foxglove.methodchannelhandler")),
-      main_thread_dispatcher_(std::make_shared<MainThreadDispatcher>()) {}
+          1, "io.jns.foxglove.methodchannelhandler")) {}
 
 void MethodChannelHandler::Terminate() {
   if (!IsValid()) {
@@ -68,10 +68,6 @@ void MethodChannelHandler::Terminate() {
   });
 
   promise.get_future().wait();
-
-  // make sure we make a last call to the main thread dispatcher to finish
-  // pending work
-  main_thread_dispatcher_->Terminate();
 }
 
 void MethodChannelHandler::HandleMethodCall(

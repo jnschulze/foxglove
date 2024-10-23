@@ -47,12 +47,12 @@ class MethodChannelHandler {
   inline bool IsValid() const { return !task_queue_->terminated(); }
 
  private:
+  std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher_;
   winrt::com_ptr<IDXGIAdapter> graphics_adapter_;
   std::unique_ptr<TextureRegistry> texture_registry_;
   flutter::BinaryMessenger* binary_messenger_;
   std::unique_ptr<PlayerResourceRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;
-  std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher_;
 
   tl::expected<int64_t, ErrorDetails> CreateVideoOutput(Player* player);
 
