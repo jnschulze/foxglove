@@ -101,6 +101,11 @@ void VlcPlayer::SetMute(bool flag) {
   impl_->SetMute(flag);
 }
 
+void VlcPlayer::SetPositionReportingEnabled(bool is_enabled) {
+  assert(impl_);
+  impl_->SetPositionReportingEnabled(is_enabled);
+}
+
 int64_t VlcPlayer::duration() {
   assert(impl_);
   return impl_->duration();

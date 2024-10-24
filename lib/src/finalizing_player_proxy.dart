@@ -84,6 +84,10 @@ class FinalizingPlayerProxy implements Player {
   Future<void> setLoopMode(LoopMode loopMode) => _player.setLoopMode(loopMode);
 
   @override
+  Future<void> setPositionReportingEnabled(bool flag) =>
+      _player.setPositionReportingEnabled(flag);
+
+  @override
   Future<void> setRate(double rate) => _player.setRate(rate);
 
   @override

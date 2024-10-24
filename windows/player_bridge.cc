@@ -42,6 +42,8 @@ constexpr auto kMethodSetLoopMode = "setLoopMode";
 constexpr auto kMethodSetVolume = "setVolume";
 constexpr auto kMethodMute = "mute";
 constexpr auto kMethodUnmute = "unmute";
+constexpr auto kMethodSetPositionReportingEnabled =
+    "setPositionReportingEnabled";
 
 constexpr auto kErrorCodeBadArgs = "invalid_arguments";
 constexpr auto kErrorCodePluginTerminated = "plugin_terminated";
@@ -229,6 +231,19 @@ void PlayerBridge::HandleMethodCall(
       player->SetMute(false);
       result->Success();
     });
+  }
+
+  if (method_name.compare(kMethodSetPositionReportingEnabled) == 0) {
+    auto value = std::get_if<bool>(method_call.arguments());
+    if (value == nullptr) {
+      return result->Error(kErrorCodeBadArgs);
+    }
+
+    return Enqueue(std::move(result),
+                   [player = player_, value = *value](MethodResult result) {
+                     player->SetPositionReportingEnabled(value);
+                     result->Success();
+                   });
   }
 
   std::cerr << "Got unhandled method call: " << method_name << std::endl;

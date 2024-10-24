@@ -51,6 +51,7 @@ abstract interface class Player {
   Future<void> close();
 
   Future<void> setLoopMode(LoopMode loopMode);
+  Future<void> setPositionReportingEnabled(bool flag);
   Future<void> play();
   Future<void> pause();
   Future<void> stop();
