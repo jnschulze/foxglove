@@ -7,26 +7,13 @@
 
 namespace foxglove {
 
-namespace {
-
-template <typename TDerived, typename TBase>
-std::unique_ptr<TDerived> unique_pointer_cast(TBase base) {
-  auto impl_ptr = dynamic_cast<TDerived*>(base.get());
-  if (!impl_ptr) {
-    return nullptr;
-  }
-  return std::unique_ptr<TDerived>(static_cast<TDerived*>(base.release()));
-}
-
-}  // namespace
-
 VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment) {
   impl_ = std::make_shared<Impl>(std::move(environment), id());
 }
 
 VlcPlayer::~VlcPlayer() { LOG(TRACE) << "Destructing VlcPlayer" << std::endl; }
 
-std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
+std::unique_ptr<VlcPlayer::VideoOutputType> VlcPlayer::CreatePixelBufferOutput(
     std::unique_ptr<PixelBufferOutputDelegate> output_delegate,
     PixelFormat pixel_format) const {
   return std::make_unique<VlcPixelBufferOutput>(std::move(output_delegate),
@@ -34,7 +21,7 @@ std::unique_ptr<VideoOutput> VlcPlayer::CreatePixelBufferOutput(
 }
 
 #ifdef _WIN32
-std::unique_ptr<VideoOutput> VlcPlayer::CreateD3D11Output(
+std::unique_ptr<VlcPlayer::VideoOutputType> VlcPlayer::CreateD3D11Output(
     std::unique_ptr<D3D11OutputDelegate> output_delegate,
     winrt::com_ptr<IDXGIAdapter> adapter) const {
   return std::make_unique<VlcD3D11Output>(std::move(output_delegate), adapter);
@@ -42,15 +29,13 @@ std::unique_ptr<VideoOutput> VlcPlayer::CreateD3D11Output(
 #endif
 
 Status<ErrorDetails> VlcPlayer::SetVideoOutput(
-    std::unique_ptr<VideoOutput> video_output) {
+    std::unique_ptr<VlcPlayer::VideoOutputType> video_output) {
   assert(impl_);
-  auto vlc_video_output =
-      unique_pointer_cast<VlcVideoOutput>(std::move(video_output));
-  assert(vlc_video_output);
-  return impl_->SetVideoOutput(std::move(vlc_video_output));
+  assert(video_output);
+  return impl_->SetVideoOutput(std::move(video_output));
 }
 
-VideoOutput* VlcPlayer::GetVideoOutput() const {
+VlcPlayer::VideoOutputType* VlcPlayer::GetVideoOutput() const {
   assert(impl_);
   return impl_->GetVideoOutput();
 }

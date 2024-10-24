@@ -32,8 +32,11 @@ class PlayerEventDelegate {
   virtual void OnVideoDimensionsChanged(int32_t width, int32_t height) {}
 };
 
-class Player : public VideoOutputFactory {
+template <typename TVideoOutput>
+class Player : public VideoOutputFactory<TVideoOutput> {
  public:
+  typedef TVideoOutput VideoOutputType;
+
   virtual ~Player() = default;
 
   virtual void SetEventDelegate(
@@ -43,8 +46,8 @@ class Player : public VideoOutputFactory {
   int64_t id() const { return reinterpret_cast<int64_t>(this); }
 
   virtual Status<ErrorDetails> SetVideoOutput(
-      std::unique_ptr<VideoOutput> output) = 0;
-  virtual VideoOutput* GetVideoOutput() const = 0;
+      std::unique_ptr<VideoOutputType> output) = 0;
+  virtual VideoOutputType* GetVideoOutput() const = 0;
 
   virtual bool Open(std::unique_ptr<Media> media) = 0;
   virtual bool Play() = 0;

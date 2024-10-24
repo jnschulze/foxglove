@@ -51,7 +51,7 @@ constexpr auto kErrorVlc = "vlc_error";
 
 PlayerBridge::PlayerBridge(
     flutter::BinaryMessenger* messenger, std::shared_ptr<TaskQueue> task_queue,
-    Player* player,
+    PlayerRegistry::PlayerType* player,
     std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher)
     : player_(player), task_queue_(std::move(task_queue)) {
   channels_ = std::make_shared<PlayerChannels>(

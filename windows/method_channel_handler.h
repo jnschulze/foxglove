@@ -14,6 +14,8 @@ namespace foxglove {
 namespace windows {
 class MethodChannelHandler {
  public:
+  typedef PlayerRegistry::PlayerType PlayerType;
+
   MethodChannelHandler(std::unique_ptr<PlayerRegistry> registry,
                        flutter::BinaryMessenger* binary_messenger,
                        flutter::TextureRegistrar* texture_registrar,
@@ -53,13 +55,15 @@ class MethodChannelHandler {
   std::unique_ptr<PlayerRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;
 
-  tl::expected<int64_t, ErrorDetails> CreateVideoOutput(Player* player);
+  tl::expected<int64_t, ErrorDetails> CreateVideoOutput(
+      PlayerType* player);
 
   void DestroyPlayers();
 
   // Asynchronously unregisters channel handlers.
   // Returns true if the callback, if provided, is guaranteed to be invoked.
-  bool UnregisterChannelHandlers(Player* player, Closure callback = nullptr);
+  bool UnregisterChannelHandlers(PlayerType* player,
+                                 Closure callback = nullptr);
 };
 }  // namespace windows
 }  // namespace foxglove

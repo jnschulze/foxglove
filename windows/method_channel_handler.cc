@@ -7,7 +7,6 @@
 #include "player_bridge.h"
 #include "player_environment.h"
 #include "video/video_outlet_d3d.h"
-#include "vlc/vlc_environment.h"
 
 namespace foxglove {
 namespace windows {
@@ -171,7 +170,7 @@ void MethodChannelHandler::CreateEnvironment(
   if (!task_queue_->Enqueue(
           [this, args = std::move(env_args), shared_result]() {
             LOG(TRACE) << "Attempting to create environment" << std::endl;
-            auto env = std::make_shared<foxglove::VlcEnvironment>(
+            auto env = std::make_shared<PlayerRegistry::EnvironmentType>(
                 std::move(args), task_queue_);
             auto id = env->id();
             registry_->environments()->Set(id, std::move(env));
@@ -225,7 +224,7 @@ void MethodChannelHandler::CreatePlayer(
   if (!task_queue_->Enqueue([environment_id,
                              env_args = std::move(environment_args),
                              shared_result, this]() {
-        std::shared_ptr<foxglove::PlayerEnvironment> env;
+        std::shared_ptr<PlayerRegistry::EnvironmentType> env;
         if (environment_id.has_value()) {
           LOG(TRACE) << "Creating player with existing env" << std::endl;
           env = registry_->environments()->Get(environment_id.value());
@@ -235,8 +234,8 @@ void MethodChannelHandler::CreatePlayer(
           }
         } else {
           LOG(TRACE) << "Creating player with implicit env" << std::endl;
-          env =
-              std::make_shared<foxglove::VlcEnvironment>(env_args, task_queue_);
+          env = std::make_shared<PlayerRegistry::EnvironmentType>(env_args,
+                                                                  task_queue_);
           if (!env) {
             LOG(ERROR) << "Creating environment failed" << std::endl;
             return shared_result->Error(kErrorCodeEnvCreationFailed);
@@ -276,7 +275,7 @@ void MethodChannelHandler::CreatePlayer(
 }
 
 tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
-    Player* player) {
+    PlayerType* player) {
   auto outlet = std::make_unique<VideoOutletD3d>(texture_registry_.get());
   auto texture_id = outlet->texture_id();
   auto video_output =
@@ -327,7 +326,8 @@ void MethodChannelHandler::DisposePlayer(
 }
 
 void MethodChannelHandler::DestroyPlayers() {
-  registry_->players()->RemoveAll([this](const int64_t& key, Player* player) {
+  registry_->players()->RemoveAll([this](const int64_t& key,
+                                         PlayerType* player) {
     [[maybe_unused]] auto is_unregistering = UnregisterChannelHandlers(player);
     // TODO
     // We currently don't unregister channels if the plugin is
@@ -337,7 +337,7 @@ void MethodChannelHandler::DestroyPlayers() {
   registry_->environments()->Clear();
 }
 
-bool MethodChannelHandler::UnregisterChannelHandlers(Player* player,
+bool MethodChannelHandler::UnregisterChannelHandlers(PlayerType* player,
                                                      Closure callback) {
   auto player_bridge =
       reinterpret_cast<PlayerBridge*>(player->event_delegate());

@@ -5,10 +5,11 @@
 #include "events.h"
 #include "player.h"
 #include "vlc/vlc_environment.h"
+#include "vlc/vlc_video_output.h"
 
 namespace foxglove {
 
-class VlcPlayer : public Player {
+class VlcPlayer : public Player<VlcVideoOutput> {
  public:
   VlcPlayer(std::shared_ptr<VlcEnvironment> environment);
   ~VlcPlayer() override;
@@ -18,20 +19,21 @@ class VlcPlayer : public Player {
   PlayerEventDelegate* event_delegate() const override;
 
   // |VideoOutputFactory|
-  std::unique_ptr<VideoOutput> CreatePixelBufferOutput(
+  std::unique_ptr<VideoOutputType> CreatePixelBufferOutput(
       std::unique_ptr<PixelBufferOutputDelegate> output_delegate,
       PixelFormat pixel_format) const override;
 
 #ifdef _WIN32
   // |VideoOutputFactory|
-  std::unique_ptr<VideoOutput> CreateD3D11Output(
+  std::unique_ptr<VideoOutputType> CreateD3D11Output(
       std::unique_ptr<D3D11OutputDelegate> output_delegate,
       winrt::com_ptr<IDXGIAdapter> adapter = nullptr) const override;
 #endif
 
   Status<ErrorDetails> SetVideoOutput(
-      std::unique_ptr<VideoOutput> output) override;
-  VideoOutput* GetVideoOutput() const override;
+      std::unique_ptr<VideoOutputType> output) override;
+
+  VideoOutputType* GetVideoOutput() const override;
 
   bool Open(std::unique_ptr<Media> media) override;
   bool Play() override;
