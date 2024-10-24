@@ -201,6 +201,10 @@ class _PlayerImpl with _StreamControllers implements Player {
       _invokeMethod('setLoopMode', mode.index);
 
   @override
+  Future<void> setPositionReportingEnabled(bool flag) =>
+      _invokeMethod('setPositionReportingEnabled', flag);
+
+  @override
   Future<void> play() => _invokeMethod('play');
 
   @override

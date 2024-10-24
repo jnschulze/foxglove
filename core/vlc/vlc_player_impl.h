@@ -233,6 +233,10 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     media_player_.setMute(flag);
   }
 
+  void SetPositionReportingEnabled(bool is_enabled) {
+    position_reporting_enabled_ = is_enabled;
+  }
+
   int64_t id() const { return id_; }
 
   int64_t duration() const {
@@ -245,6 +249,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   int64_t id_;
   VlcMediaState media_state_;
   VlcPlayerState state_;
+  std::atomic<bool> position_reporting_enabled_{true};
   std::mutex state_mutex_;
   bool shutting_down_ = false;
   std::shared_ptr<VlcEnvironment> environment_;
@@ -468,7 +473,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   }
 
   void NotifyPositionChanged(const MediaPlaybackPosition& position) {
-    if (event_delegate_) {
+    if (position_reporting_enabled_ && event_delegate_) {
       event_delegate_->OnPositionChanged(position);
     }
   }
