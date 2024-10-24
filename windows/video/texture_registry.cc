@@ -16,9 +16,9 @@ std::unique_ptr<TextureRegistration> TextureRegistry::RegisterTexture(
 
 TextureRegistration::TextureRegistration(int64_t texture_id,
                                          TextureRegistry* registry)
-    : texture_id_(texture_id),
-      registry_(registry),
-      state_(TextureRegistrationState::kRegistered) {}
+    : registry_(registry),
+      state_(TextureRegistrationState::kRegistered),
+      texture_id_(texture_id) {}
 
 void TextureRegistration::MarkFrameAvailable() const {
   if (is_valid()) {

@@ -7,10 +7,6 @@ class CurrentMediaState {
   final Media? media;
 
   const CurrentMediaState({this.media});
-
-  CurrentMediaState copyWith({Media? media}) => CurrentMediaState(
-        media: media ?? this.media,
-      );
 }
 
 /// Position & duration state of a [Player] instance.

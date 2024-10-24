@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:foxglove/foxglove.dart';
 import 'package:logging/logging.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PlayerPlatform.instance.initialize();
+
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
     // ignore: avoid_print

@@ -4,6 +4,7 @@
 #include <flutter/event_stream_handler_functions.h>
 
 #include "base/logging.h"
+#include "base/make_copyable.h"
 #include "player_events.h"
 
 namespace foxglove {
@@ -112,20 +113,25 @@ bool PlayerChannels::Unregister(Closure callback) {
   return true;
 }
 
-void PlayerChannels::EmitEvent(const flutter::EncodableValue& event) const {
-  auto weak_self = weak_from_this();
-  main_thread_dispatcher_->Dispatch([this, weak_self, event] {
-    if (!IsMessengerValid()) {
-      return;
-    }
+void PlayerChannels::EmitEvent(
+    std::unique_ptr<flutter::EncodableValue> event) const {
+  main_thread_dispatcher_->Dispatch(MakeCopyable(
+      [this, weak_self = weak_from_this(), event = std::move(event)] {
+        if (!IsMessengerValid()) {
+          return;
+        }
 
-    if (auto self = weak_self.lock()) {
-      const std::lock_guard lock(event_sink_mutex_);
-      if (event_sink_) {
-        event_sink_->Success(event);
-      }
-    }
-  });
+        if (auto self = weak_self.lock()) {
+          const std::shared_lock lock(event_sink_mutex_);
+          if (event_sink_) {
+            if (event) {
+              event_sink_->Success(*event);
+            } else {
+              event_sink_->Success();
+            }
+          }
+        }
+      }));
 }
 
 void PlayerChannels::SetEventSink(
@@ -141,7 +147,7 @@ void PlayerChannels::SetEventSink(
 void PlayerChannels::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  const std::lock_guard lock(method_call_handler_mutex_);
+  const std::shared_lock lock(method_call_handler_mutex_);
 
   LOG(TRACE) << "Got method call: " << call.method_name() << std::endl;
   if (method_call_handler_) {

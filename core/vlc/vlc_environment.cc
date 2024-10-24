@@ -8,8 +8,7 @@ namespace foxglove {
 
 namespace {
 
-static std::vector<const char*> ToCharArray(
-    const std::vector<std::string>& vector) {
+std::vector<const char*> ToCharArray(const std::vector<std::string>& vector) {
   std::vector<const char*> ptrs;
   ptrs.reserve(vector.size());
   for (const auto& item : vector) {
@@ -20,13 +19,18 @@ static std::vector<const char*> ToCharArray(
 
 }  // namespace
 
-VlcEnvironment::VlcEnvironment(const std::vector<std::string>& options,
+VlcEnvironment::VlcEnvironment(std::vector<std::string> arguments,
                                std::shared_ptr<TaskQueue> task_queue)
-    : task_queue_(task_queue) {
-  if (options.empty()) {
+    : arguments_(
+          std::move(arguments)),  // Keep a copy of arguments with the same
+                                  // lifetime as this libvlc instance
+                                  // as it's not documented whether libvlc will
+                                  // internally copy them or not.
+      task_queue_(task_queue) {
+  if (arguments_.empty()) {
     instance_ = std::make_unique<VlcInstance>(0, nullptr);
   } else {
-    auto opts = ToCharArray(options);
+    auto opts = ToCharArray(arguments_);
     instance_ = std::make_unique<VlcInstance>(static_cast<int32_t>(opts.size()),
                                               opts.data());
   }

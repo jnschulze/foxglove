@@ -53,7 +53,7 @@ void VlcD3D11Output::CleanupCb(void* opaque) {
   const auto self = static_cast<VlcD3D11Output*>(opaque);
   const std::lock_guard lock(self->render_context_mutex_);
 
-  auto d3d_context_vlc = self->render_context_.d3d_device_context_vlc();
+  const auto d3d_context_vlc = self->render_context_.d3d_device_context_vlc();
   if (d3d_context_vlc) {
     d3d_context_vlc->Release();
   }
@@ -81,7 +81,8 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   self->delegate_->SetTexture(nullptr);
 
   const auto render_context = &self->render_context_;
-  auto update_result = render_context->Update(width, height, kRenderFormat);
+  const auto update_result =
+      render_context->Update(width, height, kRenderFormat);
   if (!update_result.ok()) {
     std::cerr << "Updating render context failed: "
               << update_result.error().ToString() << std::endl;
@@ -112,7 +113,7 @@ void VlcD3D11Output::SwapCb(void* opaque) {
 bool VlcD3D11Output::StartRenderingCb(void* opaque, bool enter) { return true; }
 
 bool VlcD3D11Output::SelectPlaneCb(void* opaque, size_t plane, void* out) {
-  ID3D11RenderTargetView** output = static_cast<ID3D11RenderTargetView**>(out);
+  const auto output = static_cast<ID3D11RenderTargetView**>(out);
   const auto self = static_cast<VlcD3D11Output*>(opaque);
 
   // we only support one packed RGBA plane

@@ -13,7 +13,7 @@ MainThreadDispatcher::MainThreadDispatcher()
 
 MainThreadDispatcher::~MainThreadDispatcher() {}
 
-void MainThreadDispatcher::Dispatch(Task task) {
+void MainThreadDispatcher::Dispatch(Task&& task) {
   if (RunsTasksOnCurrentThread()) {
     task();
   } else {

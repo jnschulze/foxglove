@@ -5,8 +5,8 @@
 #include <flutter/standard_method_codec.h>
 
 #include "base/task_queue.h"
-#include "player_bridge.h"
-#include "resource_registry.h"
+#include "main_thread_dispatcher.h"
+#include "player_registry.h"
 #include "third_party/expected.h"
 #include "video/texture_registry.h"
 
@@ -14,11 +14,10 @@ namespace foxglove {
 namespace windows {
 class MethodChannelHandler {
  public:
-  MethodChannelHandler(
-      std::unique_ptr<PlayerResourceRegistry> resource_registry,
-      flutter::BinaryMessenger* binary_messenger,
-      flutter::TextureRegistrar* texture_registrar,
-      winrt::com_ptr<IDXGIAdapter> graphics_adapter);
+  MethodChannelHandler(std::unique_ptr<PlayerRegistry> registry,
+                       flutter::BinaryMessenger* binary_messenger,
+                       flutter::TextureRegistrar* texture_registrar,
+                       winrt::com_ptr<IDXGIAdapter> graphics_adapter);
 
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -51,7 +50,7 @@ class MethodChannelHandler {
   winrt::com_ptr<IDXGIAdapter> graphics_adapter_;
   std::unique_ptr<TextureRegistry> texture_registry_;
   flutter::BinaryMessenger* binary_messenger_;
-  std::unique_ptr<PlayerResourceRegistry> registry_;
+  std::unique_ptr<PlayerRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;
 
   tl::expected<int64_t, ErrorDetails> CreateVideoOutput(Player* player);

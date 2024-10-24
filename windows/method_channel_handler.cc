@@ -4,6 +4,7 @@
 
 #include "base/logging.h"
 #include "method_channel_utils.h"
+#include "player_bridge.h"
 #include "player_environment.h"
 #include "video/video_outlet_d3d.h"
 #include "vlc/vlc_environment.h"
@@ -40,7 +41,7 @@ flutter::EncodableMap ErrorDetailsToMap(const ErrorDetails& details) {
 }  // namespace
 
 MethodChannelHandler::MethodChannelHandler(
-    std::unique_ptr<PlayerResourceRegistry> resource_registry,
+    std::unique_ptr<PlayerRegistry> registry,
     flutter::BinaryMessenger* binary_messenger,
     flutter::TextureRegistrar* texture_registrar,
     winrt::com_ptr<IDXGIAdapter> graphics_adapter)
@@ -48,7 +49,7 @@ MethodChannelHandler::MethodChannelHandler(
       graphics_adapter_(std::move(graphics_adapter)),
       texture_registry_(std::make_unique<TextureRegistry>(texture_registrar)),
       binary_messenger_(binary_messenger),
-      registry_(std::move(resource_registry)),
+      registry_(std::move(registry)),
       task_queue_(std::make_shared<TaskQueue>(
           1, "io.jns.foxglove.methodchannelhandler")) {}
 
@@ -170,10 +171,10 @@ void MethodChannelHandler::CreateEnvironment(
   if (!task_queue_->Enqueue(
           [this, args = std::move(env_args), shared_result]() {
             LOG(TRACE) << "Attempting to create environment" << std::endl;
-            auto env =
-                std::make_shared<foxglove::VlcEnvironment>(args, task_queue_);
+            auto env = std::make_shared<foxglove::VlcEnvironment>(
+                std::move(args), task_queue_);
             auto id = env->id();
-            registry_->environments()->RegisterEnvironment(id, std::move(env));
+            registry_->environments()->Set(id, std::move(env));
             shared_result->Success(id);
           })) {
     shared_result->Error(kErrorCodePluginTerminated);
@@ -189,7 +190,7 @@ void MethodChannelHandler::DisposeEnvironment(
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
     if (!task_queue_->Enqueue(
             [id = *id, shared_result, registry = registry_.get()]() {
-              if (registry->environments()->RemoveEnvironment(id)) {
+              if (registry->environments()->Remove(id)) {
                 shared_result->Success();
               } else {
                 shared_result->Error(kErrorCodeInvalidId);
@@ -227,8 +228,7 @@ void MethodChannelHandler::CreatePlayer(
         std::shared_ptr<foxglove::PlayerEnvironment> env;
         if (environment_id.has_value()) {
           LOG(TRACE) << "Creating player with existing env" << std::endl;
-          env =
-              registry_->environments()->GetEnvironment(environment_id.value());
+          env = registry_->environments()->Get(environment_id.value());
           if (!env) {
             LOG(ERROR) << "Invalid environment id" << std::endl;
             return shared_result->Error(kErrorCodeInvalidId);
@@ -262,7 +262,7 @@ void MethodChannelHandler::CreatePlayer(
                                       texture_id.error().ToString(),
                                       ErrorDetailsToMap(texture_id.error()));
         }
-        registry_->players()->InsertPlayer(id, std::move(player));
+        registry_->players()->Set(id, std::move(player));
         LOG(TRACE) << "Attempting to register channel handlers" << std::endl;
         bridge_ptr->RegisterChannelHandlers([=]() {
           LOG(TRACE) << "Registering channel handlers succeeded" << std::endl;
@@ -304,7 +304,7 @@ void MethodChannelHandler::DisposePlayer(
 
     if (!task_queue_->Enqueue([id = *id, shared_result,
                                registry = registry_.get(), this]() {
-          auto player = registry->players()->RemovePlayer(id);
+          auto player = registry->players()->Remove(id);
           if (player) {
             LOG(TRACE) << "Attempting to unregister channel handlers"
                        << std::endl;
@@ -327,7 +327,7 @@ void MethodChannelHandler::DisposePlayer(
 }
 
 void MethodChannelHandler::DestroyPlayers() {
-  registry_->players()->EraseAll([this](Player* player) {
+  registry_->players()->RemoveAll([this](const int64_t& key, Player* player) {
     [[maybe_unused]] auto is_unregistering = UnregisterChannelHandlers(player);
     // TODO
     // We currently don't unregister channels if the plugin is

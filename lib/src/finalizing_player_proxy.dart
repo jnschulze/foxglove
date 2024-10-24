@@ -54,6 +54,9 @@ class FinalizingPlayerProxy implements Player {
       _player.open(media, autoStart: autoStart);
 
   @override
+  Future<void> close() => _player.close();
+
+  @override
   Future<void> pause() => _player.pause();
 
   @override

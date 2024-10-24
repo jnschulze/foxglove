@@ -22,7 +22,7 @@ class PlayerEventDelegate {
  public:
   virtual ~PlayerEventDelegate() = default;
 
-  virtual void OnMediaChanged(const Media& media) {}
+  virtual void OnMediaChanged(std::unique_ptr<Media> media) {}
   virtual void OnPlaybackStateChanged(PlaybackState playback_state) {}
   virtual void OnIsSeekableChanged(bool is_seekable) {}
   virtual void OnPositionChanged(const MediaPlaybackPosition& position) {}

@@ -19,7 +19,7 @@ class PlayerBridge : public PlayerEventDelegate {
   // Asynchronously unregisters the channel handlers on the main thread.
   bool UnregisterChannelHandlers(Closure callback) const;
 
-  void OnMediaChanged(const Media& media) override;
+  void OnMediaChanged(std::unique_ptr<Media> media) override;
   void OnPlaybackStateChanged(PlaybackState playback_state) override;
   void OnIsSeekableChanged(bool is_seekable) override;
   void OnPositionChanged(const MediaPlaybackPosition& position) override;
@@ -39,9 +39,10 @@ class PlayerBridge : public PlayerEventDelegate {
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
       const;
-  void EmitEvent(const flutter::EncodableValue& event) const;
+  void EmitEvent(std::unique_ptr<flutter::EncodableValue> event) const;
   typedef std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       MethodResult;
+
   void Enqueue(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
                    method_result,
                std::function<void(MethodResult result)> handler) const;

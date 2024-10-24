@@ -44,7 +44,12 @@ abstract interface class Player {
   /// Stream to listen to dimensions of currently playing video.
   Stream<VideoDimensions> get videoDimensionsStream;
 
+  /// Opens the given [MediaSource].
   Future<void> open(MediaSource media, {bool autoStart = true});
+
+  /// Closes the currently open [MediaSource], if any.
+  Future<void> close();
+
   Future<void> setLoopMode(LoopMode loopMode);
   Future<void> play();
   Future<void> pause();
@@ -73,6 +78,8 @@ abstract class PlayerPlatform {
   static set instance(PlayerPlatform instance) {
     _instance = instance;
   }
+
+  Future<void> initialize();
 
   /// Configures native logging.
   /// This function can be called multiple times.
