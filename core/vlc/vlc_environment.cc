@@ -42,7 +42,7 @@ VlcEnvironment::~VlcEnvironment() {
 #endif
 }
 
-std::unique_ptr<Player> VlcEnvironment::CreatePlayer() {
+std::unique_ptr<VlcPlayer> VlcEnvironment::CreatePlayer() {
   return std::make_unique<VlcPlayer>(shared_from_this());
 }
 

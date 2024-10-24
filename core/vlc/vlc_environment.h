@@ -32,14 +32,15 @@ class VlcInstance {
   std::unique_ptr<libvlc_instance_t, VlcDeleter> instance_;
 };
 
-class VlcEnvironment : public PlayerEnvironment,
+class VlcPlayer;
+class VlcEnvironment : public PlayerEnvironment<VlcPlayer>,
                        public std::enable_shared_from_this<VlcEnvironment> {
  public:
   VlcEnvironment(std::vector<std::string> arguments,
                  std::shared_ptr<TaskQueue> task_queue);
   ~VlcEnvironment() override;
 
-  std::unique_ptr<Player> CreatePlayer() override;
+  std::unique_ptr<VlcPlayer> CreatePlayer() override;
   VlcInstance* vlc_instance() const { return instance_.get(); }
 
   TaskQueue* task_runner() const { return task_queue_.get(); }

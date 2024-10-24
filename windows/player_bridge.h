@@ -2,8 +2,8 @@
 
 #include "base/task_queue.h"
 #include "main_thread_dispatcher.h"
-#include "player.h"
 #include "player_channels.h"
+#include "player_registry.h"
 
 namespace foxglove {
 namespace windows {
@@ -11,7 +11,8 @@ namespace windows {
 class PlayerBridge : public PlayerEventDelegate {
  public:
   PlayerBridge(flutter::BinaryMessenger* messenger,
-               std::shared_ptr<TaskQueue> task_queue, Player* player,
+               std::shared_ptr<TaskQueue> task_queue,
+               PlayerRegistry::PlayerType* player,
                std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher);
 
   // Asynchronously registers the channel handlers on the main thread.
@@ -31,7 +32,7 @@ class PlayerBridge : public PlayerEventDelegate {
   inline bool IsValid() const { return !task_queue_->terminated(); }
 
  private:
-  Player* player_;
+  PlayerRegistry::PlayerType* player_;
   std::shared_ptr<TaskQueue> task_queue_;
   std::shared_ptr<PlayerChannels> channels_;
 

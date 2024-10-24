@@ -6,12 +6,13 @@
 
 namespace foxglove {
 
+template <typename TPlayer>
 class PlayerEnvironment {
  public:
   virtual ~PlayerEnvironment() = default;
 
   int64_t id() const { return reinterpret_cast<int64_t>(this); }
-  virtual std::unique_ptr<Player> CreatePlayer() = 0;
+  virtual std::unique_ptr<TPlayer> CreatePlayer() = 0;
 };
 
 }  // namespace foxglove
