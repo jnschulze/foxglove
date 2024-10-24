@@ -55,8 +55,7 @@ class MethodChannelHandler {
   std::unique_ptr<PlayerRegistry> registry_;
   std::shared_ptr<TaskQueue> task_queue_;
 
-  tl::expected<int64_t, ErrorDetails> CreateVideoOutput(
-      PlayerType* player);
+  tl::expected<int64_t, ErrorDetails> CreateVideoOutput(PlayerType* player);
 
   void DestroyPlayers();
 
