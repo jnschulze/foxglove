@@ -78,6 +78,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   Impl(std::shared_ptr<VlcEnvironment> env, int64_t id)
       : environment_(env), id_(id) {
     media_player_ = VLC::MediaPlayer(*environment_->vlc_instance());
+
     SetupEventHandlers();
   }
 
@@ -117,17 +118,30 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   bool Open(std::unique_ptr<Media> media) {
     assert(thread_checker_.IsCreationThreadCurrent());
+
+    auto vlc_media = media != nullptr
+                         ? std::make_unique<VlcMedia>(std::move(media))
+                         : nullptr;
+
+    // Retain libvlc_media_t to prevent others from potentially releasing
+    // it after moving to to media_state_
+    auto vlc_media_ptr = vlc_media != nullptr
+                             ? libvlc_media_retain(vlc_media->vlc_media())
+                             : nullptr;
+
     {
       std::lock_guard<std::mutex> lock(state_mutex_);
-      media_state_.media =
-          media ? std::make_unique<VlcMedia>(std::move(media)) : nullptr;
+      media_state_.media = std::move(vlc_media);
       media_state_.has_error = false;
     }
+
     Stop();
 
-    auto vlc_media =
-        media_state_.media ? media_state_.media->vlc_media() : nullptr;
-    libvlc_media_player_set_media(media_player_.get(), vlc_media);
+    libvlc_media_player_set_media(media_player_.get(), vlc_media_ptr);
+
+    if (vlc_media_ptr) {
+      libvlc_media_release(vlc_media_ptr);
+    }
 
     return true;
   }
@@ -141,6 +155,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     assert(thread_checker_.IsCreationThreadCurrent());
     return libvlc_media_player_stop_async(media_player_.get()) == 0;
   }
+
   void Pause() {
     assert(thread_checker_.IsCreationThreadCurrent());
     media_player_.pause();
@@ -264,7 +279,9 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
         [this] { HandleVlcState(PlaybackState::kError); });
 
     player_event_manager_->onMediaChanged(
-        [this](VLC::MediaPtr media) { HandleMediaChanged(std::move(media)); });
+        [this](std::shared_ptr<VLC::Media> media) {
+          HandleMediaChanged(std::move(media));
+        });
 
     player_event_manager_->onLengthChanged(
         [this](int64_t length) { HandleLengthChanged(length); });
@@ -342,31 +359,42 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     }
   }
 
-  void HandleMediaChanged(VLC::MediaPtr vlc_media_ptr) {
+  void HandleMediaChanged(std::shared_ptr<VLC::Media> vlc_media) {
     std::unique_ptr<Media> current_media;
     {
       std::lock_guard<std::mutex> lock(state_mutex_);
-      media_state_.duration.reset();
       media_state_.position = 0;
-      auto duration = vlc_media_ptr->duration();
+      media_state_.duration = GetMediaDuration(vlc_media);
+
+      auto vlc_media_ptr = vlc_media != nullptr ? vlc_media->get() : nullptr;
+      if (vlc_media_ptr != nullptr) {
+        // Ensure that there was no attempt to open another file in the
+        // meantime.
+        if (media_state_.media &&
+            media_state_.media->vlc_media() == vlc_media_ptr) {
+          auto media = media_state_.media->media();
+          assert(media);
+          current_media = media->clone();
+        } else {
+          LOG(ERROR) << "Media has just changed again" << std::endl;
+        }
+      }
+    }
+
+    if (event_delegate_) {
+      event_delegate_->OnMediaChanged(std::move(current_media));
+    }
+  }
+
+  inline std::optional<int64_t> GetMediaDuration(
+      const std::shared_ptr<VLC::Media>& media) {
+    if (media != nullptr) {
+      auto duration = media->duration();
       if (duration != -1) {
-        media_state_.duration = duration;
-      }
-      auto vlc_media = vlc_media_ptr->get();
-
-      // Ensure that there was no attempt to open another file in the meantime.
-      if (media_state_.media && media_state_.media->vlc_media() == vlc_media) {
-        auto media = media_state_.media->media();
-        assert(media);
-        current_media = std::make_unique<Media>(*media);
-      } else {
-        LOG(ERROR) << "Media has just changed again" << std::endl;
+        return duration;
       }
     }
-
-    if (current_media && event_delegate_) {
-      event_delegate_->OnMediaChanged(*current_media.get());
-    }
+    return std::nullopt;
   }
 
   void HandleLengthChanged(int64_t length) {

@@ -19,7 +19,7 @@ class MainThreadDispatcher {
   MainThreadDispatcher();
   ~MainThreadDispatcher();
 
-  void Dispatch(Task task);
+  void Dispatch(Task&& task);
   bool RunsTasksOnCurrentThread() const {
     return thread_checker_.IsCreationThreadCurrent();
   }

@@ -33,7 +33,7 @@ FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
 
   method_channel_handler_ =
       std::make_unique<foxglove::windows::MethodChannelHandler>(
-          std::make_unique<PlayerResourceRegistry>(), binary_messenger,
+          std::make_unique<PlayerRegistry>(), binary_messenger,
           texture_registrar, std::move(graphics_adapter));
 
   method_channel_ =

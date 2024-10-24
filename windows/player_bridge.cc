@@ -1,6 +1,7 @@
 
 #include "player_bridge.h"
 
+#include "base/make_copyable.h"
 #include "media/media.h"
 #include "method_channel_utils.h"
 #include "player_events.h"
@@ -30,6 +31,7 @@ std::unique_ptr<Media> TryCreateMedia(const flutter::EncodableMap* map) {
 }
 
 constexpr auto kMethodOpen = "open";
+constexpr auto kMethodClose = "close";
 constexpr auto kMethodPlay = "play";
 constexpr auto kMethodPause = "pause";
 constexpr auto kMethodStop = "stop";
@@ -90,6 +92,7 @@ void PlayerBridge::HandleMethodCall(
   }
 
   const auto& method_name = method_call.method_name();
+
   if (method_name.compare(kMethodOpen) == 0) {
     if (auto map =
             std::get_if<flutter::EncodableMap>(method_call.arguments())) {
@@ -103,9 +106,9 @@ void PlayerBridge::HandleMethodCall(
         auto media = TryCreateMedia(media_map);
         if (media) {
           return Enqueue(
-              std::move(result), [player = player_, media_ptr = media.release(),
-                                  autostart](MethodResult result) {
-                std::unique_ptr<Media> media(media_ptr);
+              std::move(result),
+              MakeCopyable([player = player_, media = std::move(media),
+                            autostart](MethodResult result) mutable {
                 if (!player->Open(std::move(media))) {
                   return result->Error(kErrorVlc, "Failed to open media");
                 }
@@ -115,12 +118,21 @@ void PlayerBridge::HandleMethodCall(
                   }
                 }
                 result->Success();
-              });
+              }));
         }
       }
     }
 
     return result->Error(kErrorCodeBadArgs);
+  }
+
+  if (method_name.compare(kMethodClose) == 0) {
+    return Enqueue(std::move(result), [player = player_](MethodResult result) {
+      if (!player->Open(nullptr)) {
+        return result->Error(kErrorVlc, "Failed to close media");
+      }
+      result->Success();
+    });
   }
 
   if (method_name.compare(kMethodPlay) == 0) {
@@ -224,77 +236,72 @@ void PlayerBridge::HandleMethodCall(
   result->NotImplemented();
 }
 
-void PlayerBridge::EmitEvent(const flutter::EncodableValue& event) const {
-  channels_->EmitEvent(event);
+void PlayerBridge::EmitEvent(
+    std::unique_ptr<flutter::EncodableValue> event) const {
+  channels_->EmitEvent(std::move(event));
 }
 
-void PlayerBridge::OnMediaChanged(const Media& media) {
-  auto type = media.media_type();
-  auto resource = media.resource();
-  const auto event = flutter::EncodableValue(
+void PlayerBridge::OnMediaChanged(std::unique_ptr<Media> media) {
+  if (!media) {
+    EmitEvent(channels::MakeValue(
+        flutter::EncodableMap{{kEventType, Events::kMediaChanged}}));
+    return;
+  }
+
+  EmitEvent(channels::MakeValue(
       flutter::EncodableMap{{kEventType, Events::kMediaChanged},
-                            {"media", flutter::EncodableMap{
-                                          {"type", type},
-                                          {"resource", resource},
-                                      }}});
-  EmitEvent(event);
+                            {"type", media->media_type()},
+                            {"resource", media->resource()}}));
 }
 
 void PlayerBridge::OnPlaybackStateChanged(PlaybackState state) {
-  const auto event = flutter::EncodableValue(
+  EmitEvent(channels::MakeValue(
       flutter::EncodableMap{{kEventType, kPlaybackStateChanged},
-                            {"state", static_cast<int32_t>(state)}});
-  EmitEvent(event);
+                            {"state", static_cast<int32_t>(state)}}));
 }
 
 void PlayerBridge::OnIsSeekableChanged(bool is_seekable) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kIsSeekableChanged},
       {kEventValue, is_seekable},
-  });
-  EmitEvent(event);
+  }));
 }
 
 void PlayerBridge::OnPositionChanged(const MediaPlaybackPosition& position) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kPositionChanged},
       {"duration", position.duration},
       {"position", position.position},
-  });
-  EmitEvent(event);
+  }));
 }
 
 void PlayerBridge::OnRateChanged(double rate) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kRateChanged},
       {kEventValue, rate},
-  });
-  EmitEvent(event);
+  }));
 }
 
 void PlayerBridge::OnVolumeChanged(double volume) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kVolumeChanged},
       {kEventValue, volume},
-  });
-  EmitEvent(event);
+  }));
 }
 
 void PlayerBridge::OnMute(bool is_muted) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kMuteChanged},
       {kEventValue, is_muted},
-  });
-  EmitEvent(event);
+  }));
 }
 
 void PlayerBridge::OnVideoDimensionsChanged(int32_t width, int32_t height) {
-  const auto event = flutter::EncodableValue(flutter::EncodableMap{
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
       {kEventType, kVideoDimensionsChanged},
       {"width", width},
       {"height", height},
-  });
-  EmitEvent(event);
+  }));
 }
 
 }  // namespace windows

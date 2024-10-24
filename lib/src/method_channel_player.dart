@@ -46,9 +46,10 @@ typedef DisposeCallback = Future<void> Function();
 
 class MethodChannelPlayer extends PlayerPlatform {
   static final _logger = Logger('foxglove:MethodChannelPlayer');
+  static const MethodChannel _channel = MethodChannel('foxglove');
 
-  static final MethodChannel _channel = const MethodChannel('foxglove')
-    ..invokeMethod('init');
+  @override
+  Future<void> initialize() => _channel.invokeMethod('init');
 
   @override
   Future<void> configureLogging(PlatformLogConfig logConfig) async {
@@ -193,6 +194,9 @@ class _PlayerImpl with _StreamControllers implements Player {
   }
 
   @override
+  Future<void> close() => _invokeMethod('close');
+
+  @override
   Future<void> setLoopMode(LoopMode mode) =>
       _invokeMethod('setLoopMode', mode.index);
 
@@ -272,9 +276,10 @@ class _PlayerImpl with _StreamControllers implements Player {
         _playbackStateController.sink.add(_playbackState);
         break;
       case _PlatformEvent.mediaChanged:
-        final media = Media.fromJson(ev['media']);
-        _logger.info('Media changed: ${media.resource}');
-        _currentMediaState = _currentMediaState.copyWith(media: media);
+        final rawMedia = ev['media'];
+        final media = rawMedia != null ? Media.fromJson(rawMedia) : null;
+        _logger.info('Media changed: ${media?.resource}');
+        _currentMediaState = CurrentMediaState(media: media);
         _currentMediaStateController.sink.add(_currentMediaState);
         break;
       case _PlatformEvent.rateChanged:

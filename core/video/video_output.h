@@ -13,7 +13,7 @@ typedef std::function<void(const VideoDimensions& dimensions)>
 
 class VideoOutputDelegate {
  public:
-  virtual ~VideoOutputDelegate() {}
+  virtual ~VideoOutputDelegate() = default;
 };
 
 class VideoOutput {

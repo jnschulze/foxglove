@@ -4,6 +4,7 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -58,6 +59,11 @@ inline void GetStringList(const flutter::EncodableList* list,
       }
     }
   }
+}
+
+template <typename T>
+std::unique_ptr<flutter::EncodableValue> MakeValue(T&& value) {
+  return std::make_unique<flutter::EncodableValue>(std::forward<T>(value));
 }
 
 }  // namespace channels

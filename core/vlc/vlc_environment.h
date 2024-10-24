@@ -35,7 +35,7 @@ class VlcInstance {
 class VlcEnvironment : public PlayerEnvironment,
                        public std::enable_shared_from_this<VlcEnvironment> {
  public:
-  VlcEnvironment(const std::vector<std::string>& arguments,
+  VlcEnvironment(std::vector<std::string> arguments,
                  std::shared_ptr<TaskQueue> task_queue);
   ~VlcEnvironment() override;
 
@@ -45,6 +45,7 @@ class VlcEnvironment : public PlayerEnvironment,
   TaskQueue* task_runner() const { return task_queue_.get(); }
 
  private:
+  std::vector<std::string> arguments_;
   std::shared_ptr<TaskQueue> task_queue_;
   std::unique_ptr<VlcInstance> instance_;
 };
