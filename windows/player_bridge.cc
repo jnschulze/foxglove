@@ -263,10 +263,10 @@ void PlayerBridge::OnMediaChanged(std::unique_ptr<Media> media) {
     return;
   }
 
-  EmitEvent(channels::MakeValue(
-      flutter::EncodableMap{{kEventType, Events::kMediaChanged},
-                            {"type", media->media_type()},
-                            {"resource", media->resource()}}));
+  EmitEvent(channels::MakeValue(flutter::EncodableMap{
+      {kEventType, Events::kMediaChanged},
+      {"media", flutter::EncodableMap{{"type", media->media_type()},
+                                      {"resource", media->resource()}}}}));
 }
 
 void PlayerBridge::OnPlaybackStateChanged(PlaybackState state) {
