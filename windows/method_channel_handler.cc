@@ -64,6 +64,8 @@ void MethodChannelHandler::Terminate() {
     // Don't accept any further tasks.
     task_queue_->Terminate();
 
+    texture_registry_->Invalidate();
+
     promise.set_value();
   });
 
@@ -80,7 +82,7 @@ void MethodChannelHandler::HandleMethodCall(
 
   const auto& method_name = method_call.method_name();
 
-  LOG(TRACE) << "Received method call: " << method_name << std::endl;
+  LOG(LOG_TRACE) << "Received method call: " << method_name << std::endl;
 
   if (method_name.compare(kMethodInitPlatform) == 0) {
     return InitPlatform(method_call, std::move(result));
@@ -169,7 +171,7 @@ void MethodChannelHandler::CreateEnvironment(
       shared_result = std::move(result);
   if (!task_queue_->Enqueue(
           [this, args = std::move(env_args), shared_result]() {
-            LOG(TRACE) << "Attempting to create environment" << std::endl;
+            LOG(LOG_TRACE) << "Attempting to create environment" << std::endl;
             auto env = std::make_shared<PlayerRegistry::EnvironmentType>(
                 std::move(args), task_queue_);
             auto id = env->id();
@@ -205,7 +207,7 @@ void MethodChannelHandler::DisposeEnvironment(
 void MethodChannelHandler::CreatePlayer(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  LOG(TRACE) << "Attempting to create player" << std::endl;
+  LOG(LOG_TRACE) << "Attempting to create player" << std::endl;
 
   std::optional<int64_t> environment_id;
   std::vector<std::string> environment_args;
@@ -226,29 +228,29 @@ void MethodChannelHandler::CreatePlayer(
                              shared_result, this]() {
         std::shared_ptr<PlayerRegistry::EnvironmentType> env;
         if (environment_id.has_value()) {
-          LOG(TRACE) << "Creating player with existing env" << std::endl;
+          LOG(LOG_TRACE) << "Creating player with existing env" << std::endl;
           env = registry_->environments()->Get(environment_id.value());
           if (!env) {
-            LOG(ERROR) << "Invalid environment id" << std::endl;
+            LOG(LOG_ERROR) << "Invalid environment id" << std::endl;
             return shared_result->Error(kErrorCodeInvalidId);
           }
         } else {
-          LOG(TRACE) << "Creating player with implicit env" << std::endl;
+          LOG(LOG_TRACE) << "Creating player with implicit env" << std::endl;
           env = std::make_shared<PlayerRegistry::EnvironmentType>(env_args,
                                                                   task_queue_);
           if (!env) {
-            LOG(ERROR) << "Creating environment failed" << std::endl;
+            LOG(LOG_ERROR) << "Creating environment failed" << std::endl;
             return shared_result->Error(kErrorCodeEnvCreationFailed);
           }
         }
 
         auto player = env->CreatePlayer();
-        LOG(TRACE) << "Created player" << std::endl;
+        LOG(LOG_TRACE) << "Created player" << std::endl;
 
         auto bridge = std::make_unique<PlayerBridge>(binary_messenger_,
                                                      task_queue_, player.get(),
                                                      main_thread_dispatcher_);
-        LOG(TRACE) << "Created PlayerBridge" << std::endl;
+        LOG(LOG_TRACE) << "Created PlayerBridge" << std::endl;
 
         auto bridge_ptr = bridge.get();
         player->SetEventDelegate(std::move(bridge));
@@ -262,14 +264,16 @@ void MethodChannelHandler::CreatePlayer(
                                       ErrorDetailsToMap(texture_id.error()));
         }
         registry_->players()->Set(id, std::move(player));
-        LOG(TRACE) << "Attempting to register channel handlers" << std::endl;
+        LOG(LOG_TRACE) << "Attempting to register channel handlers"
+                       << std::endl;
         bridge_ptr->RegisterChannelHandlers([=]() {
-          LOG(TRACE) << "Registering channel handlers succeeded" << std::endl;
+          LOG(LOG_TRACE) << "Registering channel handlers succeeded"
+                         << std::endl;
           shared_result->Success(flutter::EncodableMap(
               {{"player_id", id}, {"texture_id", texture_id.value()}}));
         });
       })) {
-    LOG(ERROR) << "Plugin already terminated" << std::endl;
+    LOG(LOG_ERROR) << "Plugin already terminated" << std::endl;
     shared_result->Error(kErrorCodePluginTerminated);
   }
 }
@@ -283,13 +287,13 @@ tl::expected<int64_t, ErrorDetails> MethodChannelHandler::CreateVideoOutput(
 
   auto result = player->SetVideoOutput(std::move(video_output));
   if (!result.ok()) {
-    LOG(ERROR) << "Creating video output failed: " << result.error().message()
-               << std::endl;
+    LOG(LOG_ERROR) << "Creating video output failed: "
+                   << result.error().message() << std::endl;
     return tl::make_unexpected(result.error());
   }
 
-  LOG(TRACE) << "Created video output with texture id: " << texture_id
-             << std::endl;
+  LOG(LOG_TRACE) << "Created video output with texture id: " << texture_id
+                 << std::endl;
   return texture_id;
 }
 
@@ -299,25 +303,28 @@ void MethodChannelHandler::DisposePlayer(
   std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
       shared_result = std::move(result);
   if (auto id = std::get_if<int64_t>(method_call.arguments())) {
-    LOG(TRACE) << "Attempting to dispose player with id: " << *id << std::endl;
+    LOG(LOG_TRACE) << "Attempting to dispose player with id: " << *id
+                   << std::endl;
 
-    if (!task_queue_->Enqueue([id = *id, shared_result,
-                               registry = registry_.get(), this]() {
-          auto player = registry->players()->Remove(id);
-          if (player) {
-            LOG(TRACE) << "Attempting to unregister channel handlers"
-                       << std::endl;
-            if (!UnregisterChannelHandlers(player.get(), [=]() {
-                  LOG(TRACE) << "Unregistered channel handlers" << std::endl;
+    if (!task_queue_->Enqueue(
+            [id = *id, shared_result, registry = registry_.get(), this]() {
+              auto player = registry->players()->Remove(id);
+              if (player) {
+                LOG(LOG_TRACE)
+                    << "Attempting to unregister channel handlers" << std::endl;
+                if (!UnregisterChannelHandlers(player.get(), [=]() {
+                      LOG(LOG_TRACE)
+                          << "Unregistered channel handlers" << std::endl;
+                      shared_result->Success();
+                    })) {
                   shared_result->Success();
-                })) {
-              shared_result->Success();
-            }
-          } else {
-            LOG(ERROR) << "Player with id " << id << " not found" << std::endl;
-            return shared_result->Error(kErrorCodeInvalidId);
-          }
-        })) {
+                }
+              } else {
+                LOG(LOG_ERROR)
+                    << "Player with id " << id << " not found" << std::endl;
+                return shared_result->Error(kErrorCodeInvalidId);
+              }
+            })) {
       shared_result->Error(kErrorCodePluginTerminated);
     }
   } else {

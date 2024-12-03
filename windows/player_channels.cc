@@ -149,11 +149,11 @@ void PlayerChannels::HandleMethodCall(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   const std::shared_lock lock(method_call_handler_mutex_);
 
-  LOG(TRACE) << "Got method call: " << call.method_name() << std::endl;
+  LOG(LOG_TRACE) << "Got method call: " << call.method_name() << std::endl;
   if (method_call_handler_) {
     method_call_handler_(call, std::move(result));
   } else {
-    LOG(WARNING) << "No handler anymore" << std::endl;
+    LOG(LOG_WARNING) << "No handler anymore" << std::endl;
   }
 }
 

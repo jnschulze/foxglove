@@ -18,7 +18,10 @@ class TextureRegistry;
 
 class TextureRegistration {
  public:
+  static constexpr auto kInvalidTextureId = -1;
+
   TextureRegistration(int64_t texture_id, TextureRegistry* registry);
+  TextureRegistration();
 
   inline int64_t texture_id() const { return texture_id_; }
   inline TextureRegistrationState state() const { return state_; }
@@ -30,12 +33,12 @@ class TextureRegistration {
 
   // Unregisters the texture and invokes |callback| upon completion.
   // The callback gets invoked on the Flutter raster thread.
-  void Unregister(std::function<void()> callback);
+  bool Unregister(std::function<void()> callback);
 
  private:
-  TextureRegistry* registry_ = nullptr;
+  const TextureRegistry* registry_ = nullptr;
+  const int64_t texture_id_;
   std::atomic<TextureRegistrationState> state_;
-  int64_t texture_id_ = -1;
 };
 
 class TextureRegistry {
@@ -45,7 +48,10 @@ class TextureRegistry {
   std::unique_ptr<TextureRegistration> RegisterTexture(
       flutter::TextureVariant* texture);
 
-  flutter::TextureRegistrar* registrar() const { return texture_registrar_; }
+  void MarkTextureFrameAvailable(int64_t texture_id) const;
+  void UnregisterTexture(int64_t texture_id,
+                         std::function<void()> callback) const;
+  void Invalidate();
 
  private:
   flutter::TextureRegistrar* texture_registrar_ = nullptr;

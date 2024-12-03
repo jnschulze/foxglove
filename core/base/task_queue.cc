@@ -44,13 +44,13 @@ void TaskQueue::Run() {
   while (true) {
     std::unique_lock<std::mutex> lock(task_pending_mutex_);
 
-    LOG(TRACE) << "Waiting on task condition variable" << std::endl;
+    LOG(LOG_TRACE) << "Waiting on task condition variable" << std::endl;
     task_pending_cv_.wait(
         lock, [this]() { return terminated_ || !pending_tasks_.empty(); });
-    LOG(TRACE) << "Worker woke up" << std::endl;
+    LOG(LOG_TRACE) << "Worker woke up" << std::endl;
 
     if (terminated_) {
-      LOG(TRACE) << "Worker terminated" << std::endl;
+      LOG(LOG_TRACE) << "Worker terminated" << std::endl;
       return;
     }
 
@@ -58,11 +58,11 @@ void TaskQueue::Run() {
     pending_tasks_.swap(tasks);
     lock.unlock();
 
-    LOG(TRACE) << "Attempting to run tasks" << std::endl;
+    LOG(LOG_TRACE) << "Attempting to run tasks" << std::endl;
     for (const auto& task : tasks) {
       task();
     }
-    LOG(TRACE) << "Ran tasks" << std::endl;
+    LOG(LOG_TRACE) << "Ran tasks" << std::endl;
   }
 }
 }  // namespace foxglove

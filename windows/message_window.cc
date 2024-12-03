@@ -1,7 +1,8 @@
 #include "message_window.h"
 
 #include <cassert>
-#include <iostream>
+
+#include "base/logging.h"
 
 namespace foxglove {
 namespace windows {
@@ -47,7 +48,7 @@ MessageWindow::~MessageWindow() {
 
 void MessageWindow::WakeUp() {
   if (!PostMessage(window_handle_, WM_NULL, 0, 0)) {
-    std::cerr << "Failed to wakeup window" << std::endl;
+    LOG(LOG_ERROR) << "Failed to wake up window" << std::endl;
   }
 }
 

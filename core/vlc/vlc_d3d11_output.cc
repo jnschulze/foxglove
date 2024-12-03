@@ -1,8 +1,8 @@
 #include "vlc/vlc_d3d11_output.h"
 
 #include <cassert>
-#include <iostream>
 
+#include "base/logging.h"
 #include "vlc/vlc_player.h"
 
 namespace foxglove {
@@ -12,7 +12,13 @@ VlcD3D11Output::VlcD3D11Output(std::unique_ptr<D3D11OutputDelegate> delegate,
     : delegate_(std::move(delegate)), adapter_(std::move(adapter)) {}
 
 VlcD3D11Output::~VlcD3D11Output() {
+  LOG(LOG_TRACE) << "dtor" << std::endl;
+
   const std::lock_guard<std::mutex> lock(render_context_mutex_);
+
+#ifndef NDEBUG
+  assert(!needs_cleanup_ || cleanup_done_);
+#endif
 }
 
 Status<ErrorDetails> VlcD3D11Output::Attach(libvlc_media_player_t* player) {
@@ -46,6 +52,12 @@ bool VlcD3D11Output::SetupCb(void** opaque,
   assert(d3d_context_vlc);
   d3d_context_vlc->AddRef();
   out->d3d11.device_context = d3d_context_vlc;
+
+#ifndef NDEBUG
+  self->needs_cleanup_ = true;
+  self->cleanup_done_ = false;
+#endif
+
   return true;
 }
 
@@ -57,6 +69,10 @@ void VlcD3D11Output::CleanupCb(void* opaque) {
   if (d3d_context_vlc) {
     d3d_context_vlc->Release();
   }
+
+#ifndef NDEBUG
+  self->cleanup_done_ = true;
+#endif
 }
 
 void VlcD3D11Output::ResizeCb(
@@ -84,8 +100,8 @@ bool VlcD3D11Output::UpdateOutputCb(void* opaque,
   const auto update_result =
       render_context->Update(width, height, kRenderFormat);
   if (!update_result.ok()) {
-    std::cerr << "Updating render context failed: "
-              << update_result.error().ToString() << std::endl;
+    LOG(LOG_ERROR) << "Updating render context failed: "
+                   << update_result.error().ToString() << std::endl;
     self->SetDimensions(VideoDimensions(0, 0, 0));
     return false;
   }

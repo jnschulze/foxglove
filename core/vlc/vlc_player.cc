@@ -11,7 +11,9 @@ VlcPlayer::VlcPlayer(std::shared_ptr<VlcEnvironment> environment) {
   impl_ = std::make_shared<Impl>(std::move(environment), id());
 }
 
-VlcPlayer::~VlcPlayer() { LOG(TRACE) << "Destructing VlcPlayer" << std::endl; }
+VlcPlayer::~VlcPlayer() {
+  LOG(LOG_TRACE) << "Destructing VlcPlayer" << std::endl;
+}
 
 std::unique_ptr<VlcPlayer::VideoOutputType> VlcPlayer::CreatePixelBufferOutput(
     std::unique_ptr<PixelBufferOutputDelegate> output_delegate,

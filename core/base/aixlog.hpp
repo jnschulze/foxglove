@@ -54,13 +54,6 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-// ERROR macro is defined in Windows header
-// To avoid conflict between these macro and declaration of ERROR / DEBUG in SEVERITY enum
-// We save macro and undef it
-#pragma push_macro("ERROR")
-#pragma push_macro("DEBUG")
-#undef ERROR
-#undef DEBUG
 #endif
 
 #ifdef HAS_APPLE_UNIFIED_LOG_
@@ -133,13 +126,13 @@
  */
 enum SEVERITY
 {
-    TRACE = 0,
-    DEBUG = 1,
-    INFO = 2,
-    NOTICE = 3,
-    WARNING = 4,
-    ERROR = 5,
-    FATAL = 6
+    LOG_TRACE = 0,
+    LOG_DEBUG = 1,
+    LOG_INFO = 2,
+    LOG_NOTICE = 3,
+    LOG_WARNING = 4,
+    LOG_ERROR = 5,
+    LOG_FATAL = 6
 };
 
 namespace AixLog
@@ -168,13 +161,13 @@ enum class Severity : std::int8_t
     //                         ALERT                                             action must be taken immediately
     //                         EMERG                                             system is unusable
 
-    trace = SEVERITY::TRACE,
-    debug = SEVERITY::DEBUG,
-    info = SEVERITY::INFO,
-    notice = SEVERITY::NOTICE,
-    warning = SEVERITY::WARNING,
-    error = SEVERITY::ERROR,
-    fatal = SEVERITY::FATAL
+    trace = SEVERITY::LOG_TRACE,
+    debug = SEVERITY::LOG_DEBUG,
+    info = SEVERITY::LOG_INFO,
+    notice = SEVERITY::LOG_NOTICE,
+    warning = SEVERITY::LOG_WARNING,
+    error = SEVERITY::LOG_ERROR,
+    fatal = SEVERITY::LOG_FATAL
 };
 
 
@@ -1250,11 +1243,5 @@ static std::ostream& operator<<(std::ostream& os, const Color& color)
 }
 
 } // namespace AixLog
-
-#ifdef _WIN32
-// We restore the ERROR Windows macro
-#pragma pop_macro("ERROR")
-#pragma pop_macro("DEBUG")
-#endif
 
 #endif // AIX_LOG_HPP

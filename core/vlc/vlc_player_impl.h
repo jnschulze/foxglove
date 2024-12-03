@@ -19,7 +19,7 @@ namespace foxglove {
 #define PLAYER_LOG(msg)
 #else
 #define PLAYER_LOG(msg) \
-  LOG(TRACE) << "Player [" << id() << "]: " << msg << std::endl;
+  LOG(LOG_TRACE) << "Player [" << id() << "]: " << msg << std::endl;
 
 #endif
 
@@ -77,14 +77,31 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
  public:
   Impl(std::shared_ptr<VlcEnvironment> env, int64_t id)
       : environment_(env), id_(id) {
-    media_player_ = VLC::MediaPlayer(*environment_->vlc_instance());
-
+    media_player_ =
+        std::make_unique<VLC::MediaPlayer>(*environment_->vlc_instance());
     SetupEventHandlers();
   }
 
   ~Impl() {
     assert(thread_checker_.IsCreationThreadCurrent());
-    LOG(TRACE) << "Destructing VlcPlayer::Impl" << std::endl;
+
+    LOG(LOG_TRACE) << "Stopping media player" << std::endl;
+    Stop();
+
+    LOG(LOG_TRACE) << "Releasing event manager" << std::endl;
+    player_event_manager_.reset();
+
+    LOG(LOG_TRACE) << "Releasing media player" << std::endl;
+    media_player_.reset();
+
+    LOG(LOG_TRACE) << "Releasing event delegate" << std::endl;
+    event_delegate_.reset();
+
+    LOG(LOG_TRACE) << "Releasing video output" << std::endl;
+    video_output_.reset();
+
+    LOG(LOG_TRACE) << "Releasing player environment" << std::endl;
+    environment_.reset();
   }
 
   void SetEventDelegate(std::unique_ptr<PlayerEventDelegate> event_delegate) {
@@ -108,7 +125,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
                                                       dimensions.height);
           }
         });
-    return video_output_->Attach(media_player_.get());
+    return video_output_->Attach(media_player_->get());
   }
 
   VlcVideoOutput* GetVideoOutput() const {
@@ -137,7 +154,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
     Stop();
 
-    libvlc_media_player_set_media(media_player_.get(), vlc_media_ptr);
+    libvlc_media_player_set_media(media_player_->get(), vlc_media_ptr);
 
     if (vlc_media_ptr) {
       libvlc_media_release(vlc_media_ptr);
@@ -148,17 +165,17 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   bool Play() {
     assert(thread_checker_.IsCreationThreadCurrent());
-    return media_player_.play();
+    return media_player_->play();
   }
 
   bool Stop() {
     assert(thread_checker_.IsCreationThreadCurrent());
-    return libvlc_media_player_stop_async(media_player_.get()) == 0;
+    return libvlc_media_player_stop_async(media_player_->get()) == 0;
   }
 
   void Pause() {
     assert(thread_checker_.IsCreationThreadCurrent());
-    media_player_.pause();
+    media_player_->pause();
   }
 
   void SeekPosition(double position) {
@@ -197,7 +214,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   bool SeekTimeLocked(int64_t time) {
     if (media_state_.CanSeek()) {
-      media_player_.setTime(time, false);
+      media_player_->setTime(time, false);
       if (media_state_.playback_state == PlaybackState::kPaused) {
         // VLC doesn't update it's position when paused.
         // So just update the state's position directly.
@@ -216,7 +233,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   void SetRate(float rate) {
     assert(thread_checker_.IsCreationThreadCurrent());
-    media_player_.setRate(rate);
+    media_player_->setRate(rate);
   }
 
   void SetLoopMode(LoopMode mode) {
@@ -226,11 +243,11 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   void SetVolume(double volume) {
     assert(thread_checker_.IsCreationThreadCurrent());
-    media_player_.setVolume(static_cast<int32_t>(volume * 100));
+    media_player_->setVolume(static_cast<int32_t>(volume * 100));
   }
   void SetMute(bool flag) {
     assert(thread_checker_.IsCreationThreadCurrent());
-    media_player_.setMute(flag);
+    media_player_->setMute(flag);
   }
 
   void SetPositionReportingEnabled(bool is_enabled) {
@@ -251,16 +268,15 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   VlcPlayerState state_;
   std::atomic<bool> position_reporting_enabled_{true};
   std::mutex state_mutex_;
-  bool shutting_down_ = false;
   std::shared_ptr<VlcEnvironment> environment_;
   std::unique_ptr<VlcVideoOutput> video_output_;
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
-  VLC::MediaPlayer media_player_;
+  std::unique_ptr<VLC::MediaPlayer> media_player_;
   std::unique_ptr<VLC::MediaPlayerEventManager> player_event_manager_;
 
   void SetupEventHandlers() {
     player_event_manager_ = std::make_unique<VLC::MediaPlayerEventManager>(
-        media_player_.eventManager());
+        media_player_->eventManager());
 
     player_event_manager_->onNothingSpecial(
         [this] { HandleVlcState(PlaybackState::kNone); });
@@ -306,8 +322,8 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   void OnPlay() {
     // Ensure media_state_ is in sync with the actual state.
-    HandleMuteChanged(media_player_.mute());
-    HandleVolumeChanged(media_player_.volume() / 100.0f);
+    HandleMuteChanged(media_player_->mute());
+    HandleVolumeChanged(media_player_->volume() / 100.0f);
   }
 
   void HandleVlcState(PlaybackState state) {
@@ -381,7 +397,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
           assert(media);
           current_media = media->clone();
         } else {
-          LOG(ERROR) << "Media has just changed again" << std::endl;
+          LOG(LOG_ERROR) << "Media has just changed again" << std::endl;
         }
       }
     }

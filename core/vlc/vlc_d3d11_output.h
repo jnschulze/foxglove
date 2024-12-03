@@ -29,6 +29,11 @@ class VlcD3D11Output : public VlcVideoOutput {
   std::mutex render_context_mutex_;
   vlc::RenderContext render_context_;
 
+#ifndef NDEBUG
+  bool needs_cleanup_ = false;
+  bool cleanup_done_ = false;
+#endif
+
   Status<ErrorDetails> Initialize();
 
   static bool SetupCb(void** opaque, const libvlc_video_setup_device_cfg_t* cfg,
