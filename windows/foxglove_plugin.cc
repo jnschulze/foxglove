@@ -26,8 +26,8 @@ FoxglovePlugin::FoxglovePlugin(flutter::BinaryMessenger* binary_messenger,
   if (graphics_adapter) {
     DXGI_ADAPTER_DESC desc;
     if (SUCCEEDED(graphics_adapter->GetDesc(&desc))) {
-      LOG(INFO) << "Graphics adapter: " << util::Utf8FromUtf16(desc.Description)
-                << std::endl;
+      LOG(LOG_INFO) << "Graphics adapter: "
+                    << util::Utf8FromUtf16(desc.Description) << std::endl;
     }
   }
 

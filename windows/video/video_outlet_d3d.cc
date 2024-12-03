@@ -1,25 +1,23 @@
+
 #include "video_outlet_d3d.h"
 
-#include <iostream>
+#include "base/logging.h"
 
 namespace foxglove {
 namespace windows {
 
-VideoOutletD3d::VideoOutletD3d(TextureRegistry* texture_registry) {
-  state_ = std::make_shared<VideoOutletD3dState>(texture_registry);
-}
+VideoOutletD3d::VideoOutletD3d(TextureRegistry* texture_registry)
+    : state_(std::make_shared<VideoOutletD3dState>(texture_registry)) {}
 
 VideoOutletD3d::~VideoOutletD3d() {
+  LOG(LOG_TRACE) << "VideoOutletD3d dtor" << std::endl;
+
   // Asynchronously unregister the texture.
   // Any texture-related resources held by VideoOutletD3dState must not be
   // released before Unregister() completes.
   // Hence, we need to capture state_ here to make it outlive VideoOutletD3d.
   state_->registration()->Unregister([state = state_ /* Keep state alive */
-  ]() {
-#ifndef NDEBUG
-    std::cerr << "Texture unregistered." << std::endl;
-#endif
-  });
+  ]() { LOG(LOG_TRACE) << "Texture unregistration done" << std::endl; });
 }
 
 void VideoOutletD3d::Present() { state_->registration()->MarkFrameAvailable(); }
@@ -40,6 +38,8 @@ VideoOutletD3dState::VideoOutletD3dState(TextureRegistry* texture_registry) {
 }
 
 void VideoOutletD3dState::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
+  LOG(LOG_TRACE) << "Updating texture" << std::endl;
+
   const std::lock_guard lock(mutex_);
 
   const HANDLE previous_handle = shared_handle_;
@@ -70,7 +70,7 @@ void VideoOutletD3dState::SetTexture(winrt::com_ptr<ID3D11Texture2D> texture) {
         self->mutex_.unlock();
       };
     } else {
-      std::cerr << "Obtaining texture shared handle failed." << std::endl;
+      LOG(LOG_ERROR) << "Obtaining texture shared handle failed." << std::endl;
     }
   }
 
@@ -100,6 +100,8 @@ VideoOutletD3dState::surface_descriptor() {
 }
 
 VideoOutletD3dState::~VideoOutletD3dState() {
+  LOG(LOG_TRACE) << "VideoOutletD3dState dtor" << std::endl;
+
   assert(registration()->state() == TextureRegistrationState::kUnregistered);
 
   if (shared_handle_ != INVALID_HANDLE_VALUE) {

@@ -1,7 +1,6 @@
 #include "vlc/vlc_environment.h"
 
-#include <iostream>
-
+#include "base/logging.h"
 #include "vlc/vlc_player.h"
 
 namespace foxglove {
@@ -36,11 +35,7 @@ VlcEnvironment::VlcEnvironment(std::vector<std::string> arguments,
   }
 }
 
-VlcEnvironment::~VlcEnvironment() {
-#ifndef NDEBUG
-  std::cerr << "VlcEnvironment::~VlcEnvironment" << std::endl;
-#endif
-}
+VlcEnvironment::~VlcEnvironment() { LOG(LOG_TRACE) << std::endl; }
 
 std::unique_ptr<VlcPlayer> VlcEnvironment::CreatePlayer() {
   return std::make_unique<VlcPlayer>(shared_from_this());
