@@ -43,6 +43,10 @@ PlayerChannels::PlayerChannels(
           &flutter::StandardMethodCodec::GetInstance());
 }
 
+PlayerChannels::~PlayerChannels() {
+  LOG(LOG_TRACE) << "PlayerChannels dtor" << std::endl;
+}
+
 void PlayerChannels::Register(
     flutter::MethodCallHandler<flutter::EncodableValue> method_call_handler,
     Closure callback) {

@@ -15,6 +15,8 @@ class PlayerBridge : public PlayerEventDelegate {
                PlayerRegistry::PlayerType* player,
                std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher);
 
+  ~PlayerBridge() override;
+
   // Asynchronously registers the channel handlers on the main thread.
   void RegisterChannelHandlers(Closure callback) const;
   // Asynchronously unregisters the channel handlers on the main thread.
