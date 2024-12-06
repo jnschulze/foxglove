@@ -19,6 +19,7 @@ class PlayerChannels : public std::enable_shared_from_this<PlayerChannels> {
  public:
   PlayerChannels(flutter::BinaryMessenger* messenger, int64_t player_id,
                  std::shared_ptr<MainThreadDispatcher> main_thread_dispatcher);
+  ~PlayerChannels();
   void Register(flutter::MethodCallHandler<flutter::EncodableValue> handler,
                 Closure callback);
   bool Unregister(Closure callback);

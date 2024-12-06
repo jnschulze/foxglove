@@ -1,6 +1,7 @@
 
 #include "player_bridge.h"
 
+#include "base/logging.h"
 #include "base/make_copyable.h"
 #include "media/media.h"
 #include "method_channel_utils.h"
@@ -58,6 +59,10 @@ PlayerBridge::PlayerBridge(
     : player_(player), task_queue_(std::move(task_queue)) {
   channels_ = std::make_shared<PlayerChannels>(
       messenger, player->id(), std::move(main_thread_dispatcher));
+}
+
+PlayerBridge::~PlayerBridge() {
+  LOG(LOG_TRACE) << "PlayerBridge dtor" << std::endl;
 }
 
 void PlayerBridge::RegisterChannelHandlers(Closure callback) const {

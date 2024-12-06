@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 
 #include "base/logging.h"
 #include "base/thread_checker.h"
@@ -15,13 +16,8 @@
 
 namespace foxglove {
 
-#ifdef NDEBUG
-#define PLAYER_LOG(msg)
-#else
 #define PLAYER_LOG(msg) \
   LOG(LOG_TRACE) << "Player [" << id() << "]: " << msg << std::endl;
-
-#endif
 
 struct VlcMediaState {
   std::unique_ptr<VlcMedia> media;
@@ -85,32 +81,29 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   ~Impl() {
     assert(thread_checker_.IsCreationThreadCurrent());
 
-    LOG(LOG_TRACE) << "Stopping media player" << std::endl;
-    Stop();
-
     LOG(LOG_TRACE) << "Releasing event manager" << std::endl;
     player_event_manager_.reset();
 
     LOG(LOG_TRACE) << "Releasing media player" << std::endl;
     media_player_.reset();
 
-    LOG(LOG_TRACE) << "Releasing event delegate" << std::endl;
-    event_delegate_.reset();
-
     LOG(LOG_TRACE) << "Releasing video output" << std::endl;
     video_output_.reset();
+
+    LOG(LOG_TRACE) << "Releasing event delegate" << std::endl;
+    event_delegate_.reset();
 
     LOG(LOG_TRACE) << "Releasing player environment" << std::endl;
     environment_.reset();
   }
 
   void SetEventDelegate(std::unique_ptr<PlayerEventDelegate> event_delegate) {
-    assert(thread_checker_.IsCreationThreadCurrent());
+    std::unique_lock lock(event_delegate_mutex_);
     event_delegate_ = std::move(event_delegate);
   }
 
   PlayerEventDelegate* event_delegate() const {
-    assert(thread_checker_.IsCreationThreadCurrent());
+    std::shared_lock lock(event_delegate_mutex_);
     return event_delegate_.get();
   }
 
@@ -120,6 +113,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
     video_output_ = std::move(video_output);
     video_output_->OnDimensionsChanged(
         [this](const VideoDimensions& dimensions) {
+          std::shared_lock lock(event_delegate_mutex_);
           if (event_delegate_) {
             event_delegate_->OnVideoDimensionsChanged(dimensions.width,
                                                       dimensions.height);
@@ -268,10 +262,11 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   VlcPlayerState state_;
   std::atomic<bool> position_reporting_enabled_{true};
   std::mutex state_mutex_;
+  mutable std::shared_mutex event_delegate_mutex_;
   std::shared_ptr<VlcEnvironment> environment_;
   std::unique_ptr<VlcVideoOutput> video_output_;
-  std::unique_ptr<PlayerEventDelegate> event_delegate_;
   std::unique_ptr<VLC::MediaPlayer> media_player_;
+  std::unique_ptr<PlayerEventDelegate> event_delegate_;
   std::unique_ptr<VLC::MediaPlayerEventManager> player_event_manager_;
 
   void SetupEventHandlers() {
@@ -402,8 +397,11 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
       }
     }
 
-    if (event_delegate_) {
-      event_delegate_->OnMediaChanged(std::move(current_media));
+    {
+      std::shared_lock lock(event_delegate_mutex_);
+      if (event_delegate_) {
+        event_delegate_->OnMediaChanged(std::move(current_media));
+      }
     }
   }
 
@@ -448,8 +446,11 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
         has_change = true;
       }
     }
-    if (has_change && event_delegate_) {
-      event_delegate_->OnIsSeekableChanged(is_seekable);
+    if (has_change) {
+      std::shared_lock lock(event_delegate_mutex_);
+      if (event_delegate_) {
+        event_delegate_->OnIsSeekableChanged(is_seekable);
+      }
     }
   }
 
@@ -462,8 +463,11 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
         has_change = true;
       }
     }
-    if (has_change && event_delegate_) {
-      event_delegate_->OnMute(is_mute);
+    if (has_change) {
+      std::shared_lock lock(event_delegate_mutex_);
+      if (event_delegate_) {
+        event_delegate_->OnMute(is_mute);
+      }
     }
   }
 
@@ -477,20 +481,27 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
         has_change = true;
       }
     }
-    if (has_change && event_delegate_) {
-      event_delegate_->OnVolumeChanged(volume);
+    if (has_change) {
+      std::shared_lock lock(event_delegate_mutex_);
+      if (event_delegate_) {
+        event_delegate_->OnVolumeChanged(volume);
+      }
     }
   }
 
-  void NotifyStateChanged(PlaybackState playback_state) {
+  void NotifyStateChanged(PlaybackState playback_state) const {
+    std::shared_lock lock(event_delegate_mutex_);
     if (event_delegate_) {
       event_delegate_->OnPlaybackStateChanged(playback_state);
     }
   }
 
-  void NotifyPositionChanged(const MediaPlaybackPosition& position) {
-    if (position_reporting_enabled_ && event_delegate_) {
-      event_delegate_->OnPositionChanged(position);
+  void NotifyPositionChanged(const MediaPlaybackPosition& position) const {
+    if (position_reporting_enabled_) {
+      std::shared_lock lock(event_delegate_mutex_);
+      if (event_delegate_) {
+        event_delegate_->OnPositionChanged(position);
+      }
     }
   }
 };
