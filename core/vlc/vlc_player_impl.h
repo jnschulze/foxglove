@@ -81,6 +81,9 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   ~Impl() {
     assert(thread_checker_.IsCreationThreadCurrent());
 
+    // Ensure that events in flight are ignored
+    is_valid_ = false;
+
     LOG(LOG_TRACE) << "Releasing event manager" << std::endl;
     player_event_manager_.reset();
 
@@ -231,7 +234,7 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   }
 
   void SetLoopMode(LoopMode mode) {
-    assert(thread_checker_.IsCreationThreadCurrent());
+    std::lock_guard<std::mutex> lock(state_mutex_);
     state_.loop_mode = mode;
   }
 
@@ -250,22 +253,18 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
   int64_t id() const { return id_; }
 
-  int64_t duration() const {
-    assert(thread_checker_.IsCreationThreadCurrent());
-    return media_state_.duration.value_or(0);
-  }
-
  private:
   ThreadChecker thread_checker_;
   int64_t id_;
   VlcMediaState media_state_;
+  mutable std::mutex state_mutex_;
   VlcPlayerState state_;
   std::atomic<bool> position_reporting_enabled_{true};
-  std::mutex state_mutex_;
-  mutable std::shared_mutex event_delegate_mutex_;
+  std::atomic<bool> is_valid_{true};
   std::shared_ptr<VlcEnvironment> environment_;
   std::unique_ptr<VlcVideoOutput> video_output_;
   std::unique_ptr<VLC::MediaPlayer> media_player_;
+  mutable std::shared_mutex event_delegate_mutex_;
   std::unique_ptr<PlayerEventDelegate> event_delegate_;
   std::unique_ptr<VLC::MediaPlayerEventManager> player_event_manager_;
 
@@ -296,23 +295,31 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
 
     player_event_manager_->onMediaChanged(
         [this](std::shared_ptr<VLC::Media> media) {
-          HandleMediaChanged(std::move(media));
+          if (is_valid_) HandleMediaChanged(std::move(media));
         });
 
-    player_event_manager_->onLengthChanged(
-        [this](int64_t length) { HandleLengthChanged(length); });
+    player_event_manager_->onLengthChanged([this](int64_t length) {
+      if (is_valid_) HandleLengthChanged(length);
+    });
 
-    player_event_manager_->onPositionChanged(
-        [this](double position) { HandlePositionChanged(position); });
+    player_event_manager_->onPositionChanged([this](double position) {
+      if (is_valid_) HandlePositionChanged(position);
+    });
 
-    player_event_manager_->onSeekableChanged(
-        [this](bool is_seekable) { HandleSeekableChanged(is_seekable); });
+    player_event_manager_->onSeekableChanged([this](bool is_seekable) {
+      if (is_valid_) HandleSeekableChanged(is_seekable);
+    });
 
-    player_event_manager_->onAudioVolume(
-        [this](float value) { HandleVolumeChanged(value); });
+    player_event_manager_->onAudioVolume([this](float value) {
+      if (is_valid_) HandleVolumeChanged(value);
+    });
 
-    player_event_manager_->onMuted([this]() { HandleMuteChanged(true); });
-    player_event_manager_->onUnmuted([this]() { HandleMuteChanged(false); });
+    player_event_manager_->onMuted([this]() {
+      if (is_valid_) HandleMuteChanged(true);
+    });
+    player_event_manager_->onUnmuted([this]() {
+      if (is_valid_) HandleMuteChanged(false);
+    });
   }
 
   void OnPlay() {
@@ -322,6 +329,10 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
   }
 
   void HandleVlcState(PlaybackState state) {
+    if (!is_valid_) {
+      return;
+    }
+
     bool has_change = false;
     bool restart_playback = false;
 
@@ -364,10 +375,10 @@ class VlcPlayer::Impl : public std::enable_shared_from_this<VlcPlayer::Impl> {
       NotifyStateChanged(state);
       NotifyPositionChanged(position);
 
-      if (restart_playback) {
+      if (restart_playback && is_valid_) {
         environment_->task_runner()->Enqueue([weak_self = weak_from_this()]() {
           auto self = weak_self.lock();
-          if (self) {
+          if (self && self->is_valid_) {
             self->Play();
           }
         });

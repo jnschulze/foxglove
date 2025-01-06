@@ -45,7 +45,6 @@ class VlcPlayer : public Player<VlcVideoOutput> {
   void SetLoopMode(LoopMode loop_mode) override;
   void SetVolume(double volume) override;
   void SetMute(bool is_muted) override;
-  int64_t duration() override;
   void SetPositionReportingEnabled(bool is_enabled);
 
  private:
