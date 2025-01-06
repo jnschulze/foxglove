@@ -59,7 +59,6 @@ class Player : public VideoOutputFactory<TVideoOutput> {
   virtual void SetLoopMode(LoopMode loop_mode) = 0;
   virtual void SetVolume(double volume) = 0;
   virtual void SetMute(bool muted) = 0;
-  virtual int64_t duration() = 0;
 };
 
 }  // namespace foxglove

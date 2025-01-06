@@ -108,9 +108,4 @@ void VlcPlayer::SetPositionReportingEnabled(bool is_enabled) {
   impl_->SetPositionReportingEnabled(is_enabled);
 }
 
-int64_t VlcPlayer::duration() {
-  assert(impl_);
-  return impl_->duration();
-}
-
 }  // namespace foxglove
